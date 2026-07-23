@@ -6,21 +6,30 @@ from models.campaign_location import CampaignLocation
 class CampaignImportService:
 
     @staticmethod
-    def prepare_locations(df: pd.DataFrame):
+    def create_locations(
+        version_id: int,
+        df: pd.DataFrame
+    ):
 
-        rows = []
+        locations = []
 
         for _, row in df.iterrows():
 
             width = float(row["Wall Width (ft)"])
+
             height = float(row["Wall Height (ft)"])
+
             qty = int(row["Qty"])
 
-            sqft = width * height
+            wall_sqft = width * height
 
-            rows.append(
+            total_sqft = wall_sqft * qty
+
+            locations.append(
 
                 CampaignLocation(
+
+                    campaign_version_id=version_id,
 
                     state=row["State"],
 
@@ -34,11 +43,11 @@ class CampaignImportService:
 
                     wall_height_ft=height,
 
-                    wall_sqft=sqft,
+                    wall_sqft=wall_sqft,
 
                     quantity=qty,
 
-                    total_sqft=sqft * qty,
+                    total_sqft=total_sqft,
 
                     wall_type=row.get("Wall Type"),
 
@@ -52,4 +61,4 @@ class CampaignImportService:
 
             )
 
-        return rows
+        return locations
