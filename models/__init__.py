@@ -13,6 +13,8 @@ from models.campaign_location import CampaignLocation
 from models.campaign_artwork import CampaignArtwork
 from models.campaign_import_log import CampaignImportLog
 
+from models.client import Client
+
 __all__ = [
     "User",
     "Supplier",
@@ -27,4 +29,5 @@ __all__ = [
     "CampaignLocation",
     "CampaignArtwork",
     "CampaignImportLog",
+    "Client",
 ]
