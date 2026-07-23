@@ -5,6 +5,9 @@ from models.media_product import MediaProduct
 from models.warehouse import Warehouse
 from models.media_roll import MediaRoll
 from models.inventory_transaction import InventoryTransaction
+from models.printer import Printer
+
+__all__.append("Printer")
 
 __all__ = [
 
