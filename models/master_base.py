@@ -11,8 +11,7 @@ from sqlalchemy.orm import (
     mapped_column,
 )
 
-from models.base import Base
-from models.mixins import TimestampMixin
+from models.base import Base, TimestampMixin
 
 
 class MasterBase(Base, TimestampMixin):
