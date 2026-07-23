@@ -2,9 +2,7 @@ import pandas as pd
 import streamlit as st
 
 from database import get_session
-
 from models.campaign import Campaign
-
 from services.campaign_service import CampaignService
 from services.campaign_import_service import CampaignImportService
 from services.excel_validation_service import ExcelValidationService
