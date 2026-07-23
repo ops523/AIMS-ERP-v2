@@ -17,6 +17,3 @@ st.title("AIMS ERP")
 st.success("Foundation Loaded Successfully")
 
 st.write("Sprint 1 Version 2")
-
-if page == "Campaign Import Wizard":
-    from pages.campaign_wizard import *
