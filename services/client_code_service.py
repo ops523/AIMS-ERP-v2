@@ -9,13 +9,10 @@ class ClientCodeService:
     PREFIX = "CLI"
 
     @staticmethod
-    def generate(db: Session):
+    def generate(db: Session) -> str:
 
         count = db.query(
             func.count(Client.id)
-        ).scalar()
-
-        if count is None:
-            count = 0
+        ).scalar() or 0
 
         return f"{ClientCodeService.PREFIX}-{count + 1:06d}"
