@@ -72,7 +72,13 @@ if uploaded:
 
         st.success("Excel validated.")
 
-        st.dataframe(df, use_container_width=True)
+        from components.aggrid_table import AgGridTable
+
+response = AgGridTable.editable(df)
+
+edited_df = response["data"]
+
+st.session_state["campaign_df"] = edited_df
 
         if st.button("Create Campaign"):
 
