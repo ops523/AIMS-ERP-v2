@@ -1,8 +1,7 @@
 from sqlalchemy.orm import Session
-
 from models.campaign import Campaign
 from models.campaign_version import CampaignVersion
-
+from models.campaign_location import CampaignLocation
 
 class CampaignRepository:
 
@@ -39,3 +38,30 @@ class CampaignRepository:
             .filter(Campaign.id == campaign_id)
             .first()
         )
+        @staticmethod
+    def add_locations(
+        db: Session,
+        locations: list
+    ):
+
+        db.add_all(locations)
+
+    @staticmethod
+    def count_locations(
+        db: Session,
+        version_id: int
+    ):
+
+        return (
+
+            db.query(CampaignLocation)
+
+            .filter(
+
+                CampaignLocation.campaign_version_id == version_id
+
+            )
+
+            .count()
+
+        )    
