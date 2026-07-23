@@ -65,3 +65,9 @@ class CampaignVersion(Base, TimestampMixin):
         back_populates="campaign_version",
         cascade="all, delete-orphan"
     )
+    
+    import_logs = relationship(
+        "CampaignImportLog",
+        back_populates="campaign_version",
+        cascade="all, delete-orphan"
+    )
