@@ -1,0 +1,21 @@
+from enum import Enum
+
+
+class CampaignStatus(str, Enum):
+    PLANNING = "PLANNING"
+    IMPORTED = "IMPORTED"
+    ARTWORK_PENDING = "ARTWORK_PENDING"
+    READY_FOR_PRODUCTION = "READY_FOR_PRODUCTION"
+    PRINTING = "PRINTING"
+    PACKAGING = "PACKAGING"
+    DISPATCHED = "DISPATCHED"
+    EXECUTING = "EXECUTING"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
+
+
+class Priority(str, Enum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    URGENT = "URGENT"
