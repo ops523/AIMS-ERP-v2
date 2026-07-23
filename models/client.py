@@ -1,10 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import (
-    String,
-    Boolean,
-    Integer,
-)
+from sqlalchemy import String
 
 from sqlalchemy.orm import (
     Mapped,
@@ -12,31 +8,12 @@ from sqlalchemy.orm import (
     relationship,
 )
 
-from models.base import Base
-from models.mixins import TimestampMixin
+from models.master_base import MasterBase
 
 
-class Client(Base, TimestampMixin):
+class Client(MasterBase):
 
     __tablename__ = "clients"
-
-    id: Mapped[int] = mapped_column(
-        Integer,
-        primary_key=True,
-        autoincrement=True,
-    )
-
-    client_code: Mapped[str] = mapped_column(
-        String(20),
-        unique=True,
-        index=True,
-    )
-
-    client_name: Mapped[str] = mapped_column(
-        String(200),
-        unique=True,
-        index=True,
-    )
 
     gst_number: Mapped[str | None] = mapped_column(
         String(30),
@@ -63,11 +40,6 @@ class Client(Base, TimestampMixin):
         nullable=True,
     )
 
-    active: Mapped[bool] = mapped_column(
-        Boolean,
-        default=True,
-    )
-
     brands = relationship(
         "Brand",
         back_populates="client",
@@ -75,5 +47,4 @@ class Client(Base, TimestampMixin):
     )
 
     def __repr__(self):
-
-        return f"<Client {self.client_code} - {self.client_name}>"
+        return f"<Client {self.code} - {self.name}>"
