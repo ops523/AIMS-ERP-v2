@@ -60,4 +60,7 @@ class CampaignImportLog(Base):
         default=datetime.utcnow
     )
 
-    campaign_version = relationship("CampaignVersion")
+    campaign_version = relationship(
+        "CampaignVersion",
+        back_populates="import_logs"
+    )
