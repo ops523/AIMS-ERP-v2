@@ -38,7 +38,7 @@ class CampaignRepository:
             .filter(Campaign.id == campaign_id)
             .first()
         )
-        @staticmethod
+    @staticmethod
     def add_locations(
         db: Session,
         locations: list
