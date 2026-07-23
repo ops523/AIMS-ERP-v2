@@ -237,6 +237,3 @@ Sq Ft : {version.total_sqft:,.2f}
             db.rollback()
 
             st.exception(e)
-
-finally:
-    db.close()
