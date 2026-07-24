@@ -1,59 +1,88 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from sqlalchemy import (
-    Float,
-    ForeignKey,
     Integer,
+    Float,
     String,
-    Text
+    ForeignKey,
+    DateTime,
+    Text,
 )
 
 from sqlalchemy.orm import (
     Mapped,
     mapped_column,
-    relationship
+    relationship,
 )
 
 from models.base import Base, TimestampMixin
 
 
 class InventoryTransaction(Base, TimestampMixin):
+
     __tablename__ = "inventory_transactions"
 
     id: Mapped[int] = mapped_column(
         Integer,
-        primary_key=True
+        primary_key=True,
+        autoincrement=True,
     )
 
     media_roll_id: Mapped[int] = mapped_column(
-        ForeignKey("media_rolls.id")
+        ForeignKey("media_rolls.id"),
+        nullable=False,
+        index=True,
     )
 
     transaction_type: Mapped[str] = mapped_column(
-        String(50)
+        String(30),
+        nullable=False,
+        index=True,
     )
 
-    quantity_sqft: Mapped[float] = mapped_column(
-        Float
-    )
-
-    balance_sqft: Mapped[float] = mapped_column(
-        Float
-    )
-
-    reference_type: Mapped[str | None] = mapped_column(
-        String(50),
-        nullable=True
-    )
-
-    reference_number: Mapped[str | None] = mapped_column(
+    reference_module: Mapped[str] = mapped_column(
         String(100),
-        nullable=True
+        nullable=False,
+    )
+
+    reference_id: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+
+    qty_in: Mapped[float] = mapped_column(
+        Float,
+        default=0,
+    )
+
+    qty_out: Mapped[float] = mapped_column(
+        Float,
+        default=0,
+    )
+
+    balance_qty: Mapped[float] = mapped_column(
+        Float,
+        default=0,
     )
 
     remarks: Mapped[str | None] = mapped_column(
         Text,
-        nullable=True
+        nullable=True,
     )
 
-    media_roll = relationship("MediaRoll")
+    performed_by: Mapped[str | None] = mapped_column(
+        String(150),
+        nullable=True,
+    )
+
+    transaction_date: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+    )
+
+    media_roll = relationship(
+        "MediaRoll",
+        back_populates="transactions",
+    )
