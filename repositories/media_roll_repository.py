@@ -15,7 +15,6 @@ class MediaRollRepository:
         db.flush()
         db.refresh(media_roll)
 
-return media_roll
         return media_roll
 
     @staticmethod
