@@ -40,11 +40,11 @@ class Client(MasterBase):
         nullable=True,
     )
 
-    brands = relationship(
-        "Brand",
-        back_populates="client",
-        cascade="all, delete-orphan",
-    )
+    #brands = relationship(
+     #   "Brand",
+      #  back_populates="client",
+       # cascade="all, delete-orphan",
+    #)
 
     def __repr__(self):
         return f"<Client {self.code} - {self.name}>"
