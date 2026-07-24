@@ -11,6 +11,10 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+from utils.theme_loader import load_theme
+
+load_theme()
+
 # ---------------------------------------------------------
 # Initialize Database
 # ---------------------------------------------------------
