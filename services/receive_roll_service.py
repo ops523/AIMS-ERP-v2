@@ -90,24 +90,12 @@ class ReceiveRollService:
             remarks=remarks,
         )
 
-        InventoryTransactionRepository.create(
-
-            db,
-
-            InventoryTransaction(
-
+        InventoryTransactionService.receive_roll(
+            db=db,
             media_roll_id=media_roll.id,
-
-            transaction_type="RECEIPT",
-
             quantity_sqft=media_roll.total_sqft,
-
-            remarks="Roll Received",
-
-            )
-
         )
-
+        
         ActivityService.log(
 
             db=db,
