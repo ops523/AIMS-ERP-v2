@@ -1,4 +1,5 @@
 from models.roll_measurement import RollMeasurement
+
 from repositories.roll_measurement_repository import (
     RollMeasurementRepository,
 )
@@ -30,15 +31,22 @@ class RollMeasurementService:
         )
 
         measurement = RollMeasurement(
+
             media_roll_id=media_roll_id,
+
             measured_length_ft=measured_length_ft,
+
             measured_width_ft=measured_width_ft,
+
             actual_sqft=sqft,
+
             measured_by=measured_by,
+
             remarks=remarks,
+
         )
 
         return RollMeasurementRepository.create(
-            db,
-            measurement,
+            db=db,
+            measurement=measurement,
         )
