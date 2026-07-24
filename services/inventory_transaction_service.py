@@ -9,15 +9,37 @@ class InventoryTransactionService:
 
     @staticmethod
     def post_transaction(
-        db,
-        media_roll_id,
-        transaction_type,
-        reference_module,
-        qty_in=0,
-        qty_out=0,
-        reference_id=None,
-        remarks=None,
-        user=None,
+
+    db,
+
+    media_roll_id,
+
+    transaction_type,
+
+    reference_module,
+
+    qty_in=0,
+
+    qty_out=0,
+
+    reference_id=None,
+
+    campaign_id=None,
+
+    printer_id=None,
+
+    warehouse_id=None,
+
+    unit_cost=0,
+
+    total_cost=0,
+
+    wastage_sqft=0,
+
+    remarks=None,
+
+    user=None,
+
     ):
 
         current_balance = (
@@ -52,6 +74,18 @@ class InventoryTransactionService:
             remarks=remarks,
 
             performed_by=user,
+            
+            campaign_id=campaign_id,
+
+            printer_id=printer_id,
+
+            warehouse_id=warehouse_id,
+
+            unit_cost=unit_cost,
+
+            total_cost=total_cost,
+
+            wastage_sqft=wastage_sqft,
 
         )
 
