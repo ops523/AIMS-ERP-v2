@@ -1,0 +1,23 @@
+.main .block-container{
+    padding-top:1rem;
+    padding-bottom:1rem;
+}
+
+div[data-testid="stMetric"]{
+    border:1px solid #E5E5E5;
+    border-radius:10px;
+    padding:15px;
+    background:white;
+}
+
+.stButton>button{
+    border-radius:8px;
+}
+
+.stTextInput input{
+    border-radius:8px;
+}
+
+.stSelectbox div{
+    border-radius:8px;
+}
