@@ -20,20 +20,29 @@ class InventoryTransactionRepository:
         return transaction
 
     @staticmethod
-    def get_all(
+    def latest_balance(
         db: Session,
+        media_roll_id: int,
     ):
 
-        return (
+        tx = (
             db.query(InventoryTransaction)
+            .filter(
+                InventoryTransaction.media_roll_id == media_roll_id
+            )
             .order_by(
                 InventoryTransaction.id.desc()
             )
-            .all()
+            .first()
         )
 
+        if tx is None:
+            return 0
+
+        return tx.balance_qty
+
     @staticmethod
-    def get_by_roll(
+    def history(
         db: Session,
         media_roll_id: int,
     ):
