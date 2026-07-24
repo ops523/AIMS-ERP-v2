@@ -121,3 +121,9 @@ class MediaRoll(Base, UUIDMixin, TimestampMixin):
     manufacturer = relationship("Manufacturer")
     product = relationship("MediaProduct")
     warehouse = relationship("Warehouse")
+
+    measurements = relationship(
+    "RollMeasurement",
+    back_populates="media_roll",
+    cascade="all, delete-orphan",
+    )
