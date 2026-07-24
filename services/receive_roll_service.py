@@ -151,3 +151,23 @@ class ReceiveRollService:
         # --------------------------------------------------
 
         return media_roll
+
+        try:
+
+        media_roll = MediaRollRepository.create(...)
+
+        RollMeasurementService.create_measurement(...)
+
+        InventoryTransactionService.post_transaction(...)
+
+        ActivityService.log(...)
+
+        db.commit()
+
+        return media_roll
+
+        except Exception:
+
+        db.rollback()
+
+        raise
