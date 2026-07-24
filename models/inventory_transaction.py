@@ -51,6 +51,7 @@ class InventoryTransaction(Base, TimestampMixin):
         Integer,
         nullable=True,
     )
+    
     campaign_id: Mapped[int | None] = mapped_column(
     ForeignKey("campaigns.id"),
     nullable=True,
@@ -67,6 +68,21 @@ class InventoryTransaction(Base, TimestampMixin):
     ForeignKey("warehouses.id"),
     nullable=True,
     index=True,
+    )
+    
+    unit_cost: Mapped[float] = mapped_column(
+    Float,
+    default=0,
+    )
+
+    total_cost: Mapped[float] = mapped_column(
+    Float,
+    default=0,
+    )
+
+    wastage_sqft: Mapped[float] = mapped_column(
+    Float,
+    default=0,
     )
 
     qty_in: Mapped[float] = mapped_column(
@@ -103,3 +119,9 @@ class InventoryTransaction(Base, TimestampMixin):
         "MediaRoll",
         back_populates="transactions",
     )
+    
+    campaign = relationship("Campaign")
+
+    printer = relationship("Printer")
+
+    warehouse = relationship("Warehouse")
