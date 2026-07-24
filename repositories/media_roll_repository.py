@@ -12,7 +12,9 @@ class MediaRollRepository:
     ):
 
         db.add(media_roll)
+
         db.flush()
+
         db.refresh(media_roll)
 
         return media_roll
@@ -23,15 +25,9 @@ class MediaRollRepository:
     ):
 
         return (
-
             db.query(MediaRoll)
-
-            .order_by(
-                MediaRoll.id.desc()
-            )
-
+            .order_by(MediaRoll.id.desc())
             .all()
-
         )
 
     @staticmethod
@@ -41,13 +37,7 @@ class MediaRollRepository:
     ):
 
         return (
-
             db.query(MediaRoll)
-
-            .filter(
-                MediaRoll.id == roll_id
-            )
-
+            .filter(MediaRoll.id == roll_id)
             .first()
-
         )
