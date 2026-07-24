@@ -14,10 +14,16 @@ class ActivityService:
         user,
     ):
 
-        ActivityLogRepository.log(
+        return ActivityLogRepository.log(
+
             db=db,
+
             module=module,
+
             reference=reference,
+
             activity=activity,
+
             performed_by=user,
+
         )
