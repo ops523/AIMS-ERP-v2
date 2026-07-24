@@ -12,9 +12,7 @@ class InventoryTransactionRepository:
     ):
 
         db.add(transaction)
-
-        db.commit()
-
+        db.flush()
         db.refresh(transaction)
 
         return transaction
