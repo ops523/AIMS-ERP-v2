@@ -15,13 +15,21 @@ class ActivityLogRepository:
     ):
 
         obj = ActivityLog(
+
             module=module,
+
             reference=reference,
+
             activity=activity,
+
             performed_by=performed_by,
+
         )
 
         db.add(obj)
+
         db.flush()
+
+        db.refresh(obj)
 
         return obj
