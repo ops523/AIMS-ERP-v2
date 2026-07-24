@@ -6,6 +6,12 @@ from services.code_generator import CodeGenerator
 from services.roll_measurement_service import RollMeasurementService
 from services.activity_service import ActivityService
 
+from models.inventory_transaction import InventoryTransaction
+
+from repositories.inventory_transaction_repository import (
+    InventoryTransactionRepository,
+)
+
 
 class ReceiveRollService:
 
@@ -82,6 +88,24 @@ class ReceiveRollService:
             measured_by=received_by,
 
             remarks=remarks,
+        )
+
+        InventoryTransactionRepository.create(
+
+            db,
+
+            InventoryTransaction(
+
+            media_roll_id=media_roll.id,
+
+            transaction_type="RECEIPT",
+
+            quantity_sqft=media_roll.total_sqft,
+
+            remarks="Roll Received",
+
+            )
+
         )
 
         ActivityService.log(
