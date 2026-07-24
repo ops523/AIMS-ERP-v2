@@ -51,6 +51,23 @@ class InventoryTransaction(Base, TimestampMixin):
         Integer,
         nullable=True,
     )
+    campaign_id: Mapped[int | None] = mapped_column(
+    ForeignKey("campaigns.id"),
+    nullable=True,
+    index=True,
+    )
+
+    printer_id: Mapped[int | None] = mapped_column(
+    ForeignKey("printers.id"),
+    nullable=True,
+    index=True,
+    )
+
+    warehouse_id: Mapped[int | None] = mapped_column(
+    ForeignKey("warehouses.id"),
+    nullable=True,
+    index=True,
+    )
 
     qty_in: Mapped[float] = mapped_column(
         Float,
