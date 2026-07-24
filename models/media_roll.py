@@ -117,6 +117,12 @@ class MediaRoll(Base, UUIDMixin, TimestampMixin):
         default=True
     )
 
+    transactions = relationship(
+    "InventoryTransaction",
+    back_populates="media_roll",
+    cascade="all, delete-orphan",
+    )
+    
     supplier = relationship("Supplier")
     manufacturer = relationship("Manufacturer")
     product = relationship("MediaProduct")
