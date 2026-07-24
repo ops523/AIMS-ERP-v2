@@ -8,26 +8,49 @@ from repositories.inventory_transaction_repository import (
 class InventoryTransactionService:
 
     @staticmethod
-    def receive_roll(
+    def post_transaction(
         db,
         media_roll_id,
-        quantity_sqft,
-        remarks="Roll Received",
+        transaction_type,
+        reference_module,
+        qty_in=0,
+        qty_out=0,
+        reference_id=None,
+        remarks=None,
+        user=None,
     ):
 
-        transaction = InventoryTransaction(
+        current_balance = (
+            InventoryTransactionRepository.latest_balance(
+                db,
+                media_roll_id,
+            )
+        )
+
+        new_balance = current_balance + qty_in - qty_out
+
+        tx = InventoryTransaction(
 
             media_roll_id=media_roll_id,
 
-            transaction_type="RECEIPT",
+            transaction_type=transaction_type,
 
-            quantity_sqft=quantity_sqft,
+            reference_module=reference_module,
+
+            reference_id=reference_id,
+
+            qty_in=qty_in,
+
+            qty_out=qty_out,
+
+            balance_qty=new_balance,
 
             remarks=remarks,
 
+            performed_by=user,
         )
 
         return InventoryTransactionRepository.create(
             db,
-            transaction,
+            tx,
         )
