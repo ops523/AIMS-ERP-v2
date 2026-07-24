@@ -12,7 +12,9 @@ class RollMeasurementRepository:
     ):
 
         db.add(measurement)
+
         db.flush()
+
         db.refresh(measurement)
 
         return measurement
