@@ -15,6 +15,8 @@ from models.campaign_import_log import CampaignImportLog
 
 from models.client import Client
 
+from models.roll_measurement import RollMeasurement
+
 __all__ = [
     "User",
     "Supplier",
@@ -30,4 +32,5 @@ __all__ = [
     "CampaignArtwork",
     "CampaignImportLog",
     "Client",
+    "RollMeasurement",
 ]
