@@ -12,11 +12,10 @@ class MediaRollRepository:
     ):
 
         db.add(media_roll)
-
-        db.commit()
-
+        db.flush()
         db.refresh(media_roll)
 
+return media_roll
         return media_roll
 
     @staticmethod
