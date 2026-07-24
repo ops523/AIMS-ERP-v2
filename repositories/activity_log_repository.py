@@ -22,4 +22,6 @@ class ActivityLogRepository:
         )
 
         db.add(obj)
-        db.commit()
+        db.flush()
+
+        return obj
