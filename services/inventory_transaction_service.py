@@ -22,14 +22,18 @@ class InventoryTransactionService:
 
         current_balance = (
             InventoryTransactionRepository.latest_balance(
-                db,
-                media_roll_id,
+                db=db,
+                media_roll_id=media_roll_id,
             )
         )
 
-        new_balance = current_balance + qty_in - qty_out
+        new_balance = (
+            current_balance
+            + qty_in
+            - qty_out
+        )
 
-        tx = InventoryTransaction(
+        transaction = InventoryTransaction(
 
             media_roll_id=media_roll_id,
 
@@ -48,9 +52,10 @@ class InventoryTransactionService:
             remarks=remarks,
 
             performed_by=user,
+
         )
 
         return InventoryTransactionRepository.create(
-            db,
-            tx,
+            db=db,
+            transaction=transaction,
         )
