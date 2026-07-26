@@ -1,24 +1,36 @@
-from .user import User
-from .role import Role
+from .activity_log import ActivityLog
 
-from .client import Client
-from .brand import Brand
+from .artwork import Artwork
 
 from .campaign import Campaign
-from .campaign_version import CampaignVersion
 from .campaign_artwork import CampaignArtwork
+from .campaign_city import CampaignCity
+from .campaign_import_log import CampaignImportLog
+from .campaign_location import CampaignLocation
+from .campaign_version import CampaignVersion
 
-from .supplier import Supplier
+from .client import Client
+
+from .inventory_transaction import InventoryTransaction
+
 from .manufacturer import Manufacturer
-
-from .warehouse import Warehouse
 
 from .media_product import MediaProduct
 from .media_roll import MediaRoll
 
+from .print_tile import PrintTile
 from .printer import Printer
+from .printing_session import PrintingSession
 
 from .production_batch import ProductionBatch
 from .production_item import ProductionItem
 
-from .inventory_transaction import InventoryTransaction
+from .roll_measurement import RollMeasurement
+
+from .supplier import Supplier
+
+from .user import User
+
+from .warehouse import Warehouse
+
+from .wastage import Wastage
