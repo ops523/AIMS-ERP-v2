@@ -46,7 +46,11 @@ tab1, tab2, tab3, tab4 = st.tabs(
 
 with tab1:
 
-    st.subheader("Production Batch")
+    from components.production_batch_form import (
+    ProductionBatchForm,
+    )
+
+ProductionBatchForm.render()
 
 with tab2:
 
