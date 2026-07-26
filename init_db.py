@@ -1,24 +1,24 @@
-from database import Base
-from database import engine
+from sqlalchemy import inspect
 
-import traceback
+from database import Base, engine
 import models
 
 
 def initialize_database():
+    print("=" * 60)
+    print("REGISTERED MODELS")
+    print("=" * 60)
+
+    for table in sorted(Base.metadata.tables.keys()):
+        print(table)
+
+    Base.metadata.create_all(bind=engine)
 
     print("=" * 60)
-    print("Initializing database...")
+    print("DATABASE TABLES")
     print("=" * 60)
 
-    try:
+    inspector = inspect(engine)
 
-        Base.metadata.create_all(bind=engine)
-
-        print("SUCCESS")
-
-    except Exception:
-
-        traceback.print_exc()
-
-        raise
+    for table in inspector.get_table_names():
+        print(table)
