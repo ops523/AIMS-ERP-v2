@@ -68,3 +68,8 @@ class CampaignArtwork(Base, UUIDMixin, TimestampMixin):
         "CampaignVersion",
         back_populates="artworks"
     )
+
+    production_items = relationship(
+    "ProductionItem",
+    back_populates="campaign_artwork",
+    )
