@@ -1,9 +1,8 @@
 from models.production_batch import ProductionBatch
-from utils.number_generator import NumberGenerator
-
 from repositories.production_batch_repository import (
     ProductionBatchRepository,
 )
+from utils.number_generator import NumberGenerator
 
 
 class ProductionBatchService:
@@ -11,8 +10,6 @@ class ProductionBatchService:
     @staticmethod
     def create(
         db,
-        batch_number,
-        campaign_id,
         printer_id,
         remarks=None,
     ):
@@ -21,8 +18,6 @@ class ProductionBatchService:
 
             batch_number=NumberGenerator.production_batch_number(db),
 
-            campaign_id=campaign_id,
-
             printer_id=printer_id,
 
             remarks=remarks,
@@ -30,6 +25,6 @@ class ProductionBatchService:
         )
 
         return ProductionBatchRepository.create(
-            db,
-            batch,
+            db=db,
+            batch=batch,
         )
