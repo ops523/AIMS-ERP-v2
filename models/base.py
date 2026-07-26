@@ -1,44 +1,42 @@
-"""
-Base model classes shared across all entities.
-"""
-
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
-from uuid import uuid4
 
-from sqlalchemy import DateTime, String, func
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
+
+from sqlalchemy import DateTime
+from sqlalchemy import String
 
 
 class Base(DeclarativeBase):
-    """Base class for all ORM models."""
     pass
 
 
+class UUIDMixin:
+
+    uuid: Mapped[str] = mapped_column(
+        String(36),
+        default=lambda: str(uuid.uuid4()),
+        unique=True,
+        nullable=False,
+        index=True,
+    )
+
+
 class TimestampMixin:
-    """Automatically managed timestamps."""
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
+        DateTime,
+        default=datetime.utcnow,
         nullable=False,
     )
 
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
         nullable=False,
-    )
-
-
-class UUIDMixin:
-    """Stable UUID for integrations and QR references."""
-
-    uuid: Mapped[str] = mapped_column(
-        String(36),
-        unique=True,
-        index=True,
-        default=lambda: str(uuid4()),
     )
