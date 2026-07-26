@@ -70,5 +70,6 @@ class ProductionItem(
     )
 
     media_roll = relationship(
-        "MediaRoll",
+    "MediaRoll",
+    back_populates="production_items",
     )
