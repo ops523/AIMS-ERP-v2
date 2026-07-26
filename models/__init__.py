@@ -1,7 +1,5 @@
 from .activity_log import ActivityLog
 
-from .artwork import Artwork
-
 from .campaign import Campaign
 from .campaign_artwork import CampaignArtwork
 from .campaign_city import CampaignCity
