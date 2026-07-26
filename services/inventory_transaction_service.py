@@ -1,3 +1,15 @@
+from constants.inventory import (
+    RECEIPT,
+    CONSUMPTION,
+    ADJUSTMENT,
+)
+
+from constants.modules import (
+    RECEIVE_ROLL,
+    PRINTING,
+    STOCK_ADJUSTMENT,
+)
+
 from models.inventory_transaction import InventoryTransaction
 
 from repositories.inventory_transaction_repository import (
@@ -26,30 +38,21 @@ class InventoryTransactionService:
         user=None,
     ):
 
-        # ----------------------------------------
-        # Get Current Balance
-        # ----------------------------------------
+        # Get latest balance
+        current_balance = InventoryTransactionRepository.latest_balance(
+            db=db,
+            media_roll_id=media_roll_id,
+        )
 
-        current_balance = (
-            InventoryTransactionRepository.latest_balance(
-                db=db,
-                media_roll_id=media_roll_id,
+        # Calculate new balance
+        new_balance = current_balance + qty_in - qty_out
+
+        # Prevent negative inventory
+        if new_balance < 0:
+            raise ValueError(
+                f"Insufficient inventory. Current balance: {current_balance}, "
+                f"Attempted consumption: {qty_out}"
             )
-        )
-
-        # ----------------------------------------
-        # Calculate New Balance
-        # ----------------------------------------
-
-        new_balance = (
-            current_balance
-            + qty_in
-            - qty_out
-        )
-
-        # ----------------------------------------
-        # Create Inventory Transaction
-        # ----------------------------------------
 
         transaction = InventoryTransaction(
 
@@ -85,10 +88,6 @@ class InventoryTransactionService:
 
         )
 
-        # ----------------------------------------
-        # Save Transaction
-        # ----------------------------------------
-
         return InventoryTransactionRepository.create(
             db=db,
             transaction=transaction,
@@ -100,7 +99,7 @@ class InventoryTransactionService:
         media_roll_id,
         warehouse_id,
         qty,
-        user,
+        user=None,
         remarks="Media Roll Received",
     ):
 
@@ -110,9 +109,9 @@ class InventoryTransactionService:
 
             media_roll_id=media_roll_id,
 
-            transaction_type="RECEIPT",
+            transaction_type=RECEIPT,
 
-            reference_module="Receive Roll",
+            reference_module=RECEIVE_ROLL,
 
             warehouse_id=warehouse_id,
 
@@ -135,6 +134,8 @@ class InventoryTransactionService:
         warehouse_id,
         qty,
         wastage=0,
+        unit_cost=0,
+        total_cost=0,
         remarks="Roll Consumed",
         user=None,
     ):
@@ -145,9 +146,9 @@ class InventoryTransactionService:
 
             media_roll_id=media_roll_id,
 
-            transaction_type="CONSUMPTION",
+            transaction_type=CONSUMPTION,
 
-            reference_module="Printing",
+            reference_module=PRINTING,
 
             campaign_id=campaign_id,
 
@@ -158,6 +159,10 @@ class InventoryTransactionService:
             qty_in=0,
 
             qty_out=qty,
+
+            unit_cost=unit_cost,
+
+            total_cost=total_cost,
 
             wastage_sqft=wastage,
 
@@ -185,9 +190,9 @@ class InventoryTransactionService:
 
                 media_roll_id=media_roll_id,
 
-                transaction_type="ADJUSTMENT",
+                transaction_type=ADJUSTMENT,
 
-                reference_module="Stock Adjustment",
+                reference_module=STOCK_ADJUSTMENT,
 
                 warehouse_id=warehouse_id,
 
@@ -207,15 +212,70 @@ class InventoryTransactionService:
 
             media_roll_id=media_roll_id,
 
-            transaction_type="ADJUSTMENT",
+            transaction_type=ADJUSTMENT,
 
-            reference_module="Stock Adjustment",
+            reference_module=STOCK_ADJUSTMENT,
 
             warehouse_id=warehouse_id,
 
             qty_in=0,
 
             qty_out=abs(qty),
+
+            remarks=remarks,
+
+            user=user,
+
+        )
+
+    @staticmethod
+    def transfer(
+        db,
+        media_roll_id,
+        from_warehouse_id,
+        to_warehouse_id,
+        qty,
+        remarks="Warehouse Transfer",
+        user=None,
+    ):
+        """
+        Creates OUT transaction from source warehouse and
+        IN transaction to destination warehouse.
+        """
+
+        InventoryTransactionService.post_transaction(
+
+            db=db,
+
+            media_roll_id=media_roll_id,
+
+            transaction_type="TRANSFER_OUT",
+
+            reference_module="Warehouse Transfer",
+
+            warehouse_id=from_warehouse_id,
+
+            qty_out=qty,
+
+            remarks=remarks,
+
+            user=user,
+
+        )
+
+        InventoryTransactionService.post_transaction(
+
+            db=db,
+
+            media_roll_id=media_roll_id,
+
+            transaction_type="TRANSFER_IN",
+
+            reference_module="Warehouse Transfer",
+
+            warehouse_id=to_warehouse_id,
+
+            qty_in=qty,
 
             remarks=remarks,
 
