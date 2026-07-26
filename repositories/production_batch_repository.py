@@ -38,3 +38,18 @@ class ProductionBatchRepository:
             )
             .first()
         )
+    
+    @staticmethod
+    def open_batches(db):
+
+        return (
+
+            db.query(ProductionBatch)
+
+            .filter(
+            ProductionBatch.status != "COMPLETED"
+            )
+
+        .all()
+
+        )
