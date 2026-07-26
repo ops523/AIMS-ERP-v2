@@ -1,24 +1,29 @@
 from sqlalchemy import inspect
 
-from database import Base, engine
 import models
+
+from database import Base
+from database import engine
 
 
 def initialize_database():
-    print("=" * 60)
-    print("INITIALIZING DATABASE")
-    print("=" * 60)
 
-    print("\nRegistered Models:")
+    print("=" * 70)
+    print("AIMS ERP DATABASE INITIALIZATION")
+    print("=" * 70)
+
+    print("\nRegistered Models")
+
     for table in sorted(Base.metadata.tables.keys()):
-        print(f" - {table}")
+        print(" -", table)
 
     Base.metadata.create_all(bind=engine)
 
     inspector = inspect(engine)
 
-    print("\nActual Database Tables:")
-    for table in sorted(inspector.get_table_names()):
-        print(f" - {table}")
+    print("\nDatabase Tables")
 
-    print("\nDatabase initialization completed.")
+    for table in sorted(inspector.get_table_names()):
+        print(" -", table)
+
+    print("\nInitialization Complete")
