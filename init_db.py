@@ -1,9 +1,19 @@
-from sqlalchemy import inspect
+from database import Base
+from database import engine
+from database import SessionLocal
 
 import models
 
-from database import Base, engine
+from database.seed import seed_database
 
 
 def initialize_database():
+
     Base.metadata.create_all(bind=engine)
+
+    db = SessionLocal()
+
+    try:
+        seed_database(db)
+    finally:
+        db.close()
