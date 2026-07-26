@@ -18,6 +18,7 @@ from models.client import Client
 from models.roll_measurement import RollMeasurement
 from models.activity_log import ActivityLog
 from models.production_batch import ProductionBatch
+from models.production_item import ProductionItem
 
 __all__ = [
     "User",
@@ -37,4 +38,5 @@ __all__ = [
     "RollMeasurement",
     "ActivityLog",
     "ProductionBatch",
+    "ProductionItem",
 ]
