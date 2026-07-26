@@ -52,6 +52,10 @@ with tab1:
 
 ProductionBatchForm.render()
 
+st.divider()
+
+ProductionBatchList.render()
+
 with tab2:
 
     st.subheader("Production Items")
