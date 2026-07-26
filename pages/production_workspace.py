@@ -1,10 +1,16 @@
 import streamlit as st
 
-from components.production_batch_list import ProductionBatchList
-
 from database import SessionLocal
 
 from components.page_header import PageHeader
+
+from components.production_batch_form import (
+    ProductionBatchForm,
+)
+
+from components.production_batch_list import (
+    ProductionBatchList,
+)
 
 from services.production_batch_service import (
     ProductionBatchService,
@@ -14,58 +20,75 @@ from services.production_item_service import (
     ProductionItemService,
 )
 
-PageHeader.render(
-
-    "Production Workspace",
-
-    "Production Planning & Printing",
-
-    "🖨️",
-
-)
 
 db = SessionLocal()
 
+
+PageHeader.render(
+    title="Production Workspace",
+    subtitle="Production Planning & Printing",
+    icon="🖨️",
+)
+
 st.info(
-    "This workspace will manage the complete production lifecycle."
+    "Manage the complete production lifecycle from a single workspace."
 )
 
-tab1, tab2, tab3, tab4 = st.tabs(
-
+tab_batch, tab_items, tab_rolls, tab_printing = st.tabs(
     [
-
-        "Batch",
-
-        "Items",
-
+        "Production Batch",
+        "Production Items",
         "Roll Assignment",
-
-        "Printing",
-
+        "Printing Progress",
     ]
-
 )
 
-with tab1:
 
-    from components.production_batch_form import (
-    ProductionBatchForm,
+# --------------------------------------------------------
+# Production Batch
+# --------------------------------------------------------
+
+with tab_batch:
+
+    st.subheader("Create Production Batch")
+
+    ProductionBatchForm.render()
+
+    st.divider()
+
+    st.subheader("Existing Production Batches")
+
+    ProductionBatchList.render()
+
+
+# --------------------------------------------------------
+# Production Items
+# --------------------------------------------------------
+
+with tab_items:
+
+    st.info(
+        "Production Items module will be added in Sprint 7.4."
     )
 
-ProductionBatchForm.render()
 
-st.divider()
+# --------------------------------------------------------
+# Roll Assignment
+# --------------------------------------------------------
 
-ProductionBatchList.render()
+with tab_rolls:
 
-with tab2:
+    st.info(
+        "Roll Assignment module will be added in Sprint 7.5."
+    )
 
-    st.subheader("Production Items")
 
-with tab3:
+# --------------------------------------------------------
+# Printing Progress
+# --------------------------------------------------------
 
-    st.subheader("Assign Media Rolls")
+with tab_printing:
 
-with tab4:
-
-    st.subheader("Printing Progress")
+    st.info(
+        "Printing Progress module will be added in Sprint 7.6."
+    )
