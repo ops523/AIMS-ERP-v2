@@ -22,27 +22,16 @@ class ProductionBatchList:
         for batch in batches:
 
             rows.append(
-
                 {
-
                     "Batch": batch.batch_number,
-
-                    "Campaign": batch.campaign.campaign_name,
-
                     "Printer": batch.printer.printer_name,
-
                     "Status": batch.status,
-
+                    "Remarks": batch.remarks,
                 }
-
             )
 
-        st.data_editor(
-
+        st.dataframe(
             pd.DataFrame(rows),
-
-            disabled=True,
-
             use_container_width=True,
-
+            hide_index=True,
         )
