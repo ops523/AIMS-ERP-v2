@@ -19,7 +19,6 @@ class ProductionItem(
     UUIDMixin,
     TimestampMixin,
 ):
-
     __tablename__ = "production_items"
 
     id: Mapped[int] = mapped_column(
@@ -31,8 +30,8 @@ class ProductionItem(
         ForeignKey("production_batches.id"),
     )
 
-    artwork_id: Mapped[int] = mapped_column(
-        ForeignKey("artworks.id"),
+    campaign_artwork_id: Mapped[int] = mapped_column(
+        ForeignKey("campaign_artworks.id"),
     )
 
     media_roll_id: Mapped[int | None] = mapped_column(
@@ -60,8 +59,15 @@ class ProductionItem(
         default="PENDING",
     )
 
-    production_batch = relationship("ProductionBatch")
+    production_batch = relationship(
+        "ProductionBatch",
+        back_populates="production_items",
+    )
 
-    artwork = relationship("Artwork")
+    campaign_artwork = relationship(
+        "CampaignArtwork",
+    )
 
-    media_roll = relationship("MediaRoll")
+    media_roll = relationship(
+        "MediaRoll",
+    )
