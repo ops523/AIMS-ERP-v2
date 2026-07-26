@@ -18,7 +18,6 @@ class ProductionBatch(
     UUIDMixin,
     TimestampMixin,
 ):
-
     __tablename__ = "production_batches"
 
     id: Mapped[int] = mapped_column(
@@ -30,10 +29,6 @@ class ProductionBatch(
         String(30),
         unique=True,
         index=True,
-    )
-
-    campaign_id: Mapped[int] = mapped_column(
-        ForeignKey("campaigns.id"),
     )
 
     printer_id: Mapped[int] = mapped_column(
@@ -50,6 +45,12 @@ class ProductionBatch(
         nullable=True,
     )
 
-    campaign = relationship("Campaign")
+    printer = relationship(
+        "Printer"
+    )
 
-    printer = relationship("Printer")
+    production_items = relationship(
+        "ProductionItem",
+        back_populates="production_batch",
+        cascade="all, delete-orphan",
+    )
