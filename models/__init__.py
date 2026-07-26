@@ -1,42 +1,24 @@
-from models.user import User
-from models.supplier import Supplier
-from models.manufacturer import Manufacturer
-from models.media_product import MediaProduct
-from models.warehouse import Warehouse
-from models.media_roll import MediaRoll
-from models.inventory_transaction import InventoryTransaction
-from models.printer import Printer
+from .user import User
+from .role import Role
 
-from models.campaign import Campaign
-from models.campaign_version import CampaignVersion
-from models.campaign_location import CampaignLocation
-from models.campaign_artwork import CampaignArtwork
-from models.campaign_import_log import CampaignImportLog
+from .client import Client
+from .brand import Brand
 
-from models.client import Client
+from .campaign import Campaign
+from .campaign_version import CampaignVersion
+from .campaign_artwork import CampaignArtwork
 
-from models.roll_measurement import RollMeasurement
-from models.activity_log import ActivityLog
-from models.production_batch import ProductionBatch
-from models.production_item import ProductionItem
+from .supplier import Supplier
+from .manufacturer import Manufacturer
 
-__all__ = [
-    "User",
-    "Supplier",
-    "Manufacturer",
-    "MediaProduct",
-    "Warehouse",
-    "MediaRoll",
-    "InventoryTransaction",
-    "Printer",
-    "Campaign",
-    "CampaignVersion",
-    "CampaignLocation",
-    "CampaignArtwork",
-    "CampaignImportLog",
-    "Client",
-    "RollMeasurement",
-    "ActivityLog",
-    "ProductionBatch",
-    "ProductionItem",
-]
+from .warehouse import Warehouse
+
+from .media_product import MediaProduct
+from .media_roll import MediaRoll
+
+from .printer import Printer
+
+from .production_batch import ProductionBatch
+from .production_item import ProductionItem
+
+from .inventory_transaction import InventoryTransaction
