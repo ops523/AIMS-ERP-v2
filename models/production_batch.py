@@ -33,6 +33,7 @@ class ProductionBatch(
 
     printer_id: Mapped[int] = mapped_column(
         ForeignKey("printers.id"),
+        nullable=False,
     )
 
     status: Mapped[str] = mapped_column(
@@ -46,7 +47,8 @@ class ProductionBatch(
     )
 
     printer = relationship(
-        "Printer"
+        "Printer",
+        back_populates="production_batches",
     )
 
     production_items = relationship(
