@@ -65,7 +65,8 @@ class ProductionItem(
     )
 
     campaign_artwork = relationship(
-        "CampaignArtwork",
+    "CampaignArtwork",
+    back_populates="production_items",
     )
 
     media_roll = relationship(
