@@ -4,7 +4,7 @@ from database import SessionLocal
 
 import models
 
-from database.seed import seed_database
+from services.seed_service import seed_database
 
 
 def initialize_database():
