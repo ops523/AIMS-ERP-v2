@@ -134,6 +134,12 @@ class MediaRoll(Base, UUIDMixin, TimestampMixin):
     cascade="all, delete-orphan",
     )
 
+    allocations = relationship(
+    "ProductionAllocation",
+    back_populates="media_roll",
+    cascade="all, delete-orphan",
+    )
+
     production_items = relationship(
     "ProductionItem",
     back_populates="media_roll",
