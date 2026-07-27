@@ -124,7 +124,7 @@ def seed_database(db: Session):
         db.add(
             User(
                 username="admin",
-                password_hash = hash_password("admin123"),
+                password_hash="admin123",
                 full_name="Administrator",
                 role="Admin",
                 is_active=True,
