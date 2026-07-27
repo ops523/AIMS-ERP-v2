@@ -4,12 +4,24 @@ from components.production_dashboard import ProductionDashboard
 from components.production_batch_wizard import ProductionBatchWizard
 from components.production_batch_list import ProductionBatchList
 
-ProductionDashboard.render()
+st.title("🖨️ Production")
 
-st.divider()
+dashboard_tab, create_tab, active_tab = st.tabs(
+    [
+        "📊 Dashboard",
+        "➕ Create Batch",
+        "📋 Active Batches",
+    ]
+)
 
-ProductionBatchWizard.render()
+with dashboard_tab:
 
-st.divider()
+    ProductionDashboard.render()
 
-ProductionBatchList.render()
+with create_tab:
+
+    ProductionBatchWizard.render()
+
+with active_tab:
+
+    ProductionBatchList.render()
