@@ -34,10 +34,6 @@ class ProductionItem(
         ForeignKey("campaign_artworks.id"),
     )
 
-    media_roll_id: Mapped[int | None] = mapped_column(
-        ForeignKey("media_rolls.id"),
-        nullable=True,
-    )
 
     planned_sqft: Mapped[float] = mapped_column(
         Float,
@@ -69,7 +65,8 @@ class ProductionItem(
     back_populates="production_items",
     )
 
-    media_roll = relationship(
-    "MediaRoll",
-    back_populates="production_items",
+    allocations = relationship(
+    "ProductionAllocation",
+    back_populates="production_item",
+    cascade="all, delete-orphan",
     )
