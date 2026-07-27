@@ -1,16 +1,23 @@
 from __future__ import annotations
 
-from sqlalchemy import ForeignKey
-from sqlalchemy import Integer
-from sqlalchemy import String
+from sqlalchemy import (
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
 
-from sqlalchemy.orm import Mapped
-from sqlalchemy.orm import mapped_column
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import (
+    Mapped,
+    mapped_column,
+    relationship,
+)
 
-from models.base import Base
-from models.base import TimestampMixin
-from models.base import UUIDMixin
+from models.base import (
+    Base,
+    UUIDMixin,
+    TimestampMixin,
+)
 
 
 class ProductionBatch(
@@ -33,18 +40,21 @@ class ProductionBatch(
 
     printer_id: Mapped[int] = mapped_column(
         ForeignKey("printers.id"),
-        nullable=False,
     )
 
     status: Mapped[str] = mapped_column(
         String(30),
-        default="OPEN",
+        default="DRAFT",
     )
 
     remarks: Mapped[str | None] = mapped_column(
-        String(500),
+        Text,
         nullable=True,
     )
+
+    # ---------------------------------------
+    # Relationships
+    # ---------------------------------------
 
     printer = relationship(
         "Printer",
