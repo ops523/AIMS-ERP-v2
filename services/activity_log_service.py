@@ -4,20 +4,26 @@ from models.activity_log import ActivityLog
 class ActivityLogService:
 
     @staticmethod
-    def batch_created(
+    def log(
         db,
-        batch,
+        module,
+        action,
+        reference_number,
+        remarks="",
+        user=None,
     ):
 
         log = ActivityLog(
 
-            module="Production",
+            module=module,
 
-            action="Batch Created",
+            action=action,
 
-            reference_number=batch.batch_number,
+            reference_number=reference_number,
 
-            remarks=f"Production Batch {batch.batch_number} created.",
+            remarks=remarks,
+
+            user=user,
         )
 
         db.add(log)
