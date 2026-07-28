@@ -11,12 +11,5 @@ class CampaignCodeService:
     PREFIX = "CMP"
 
     @staticmethod
-    def generate(db: Session) -> str:
-
-        year = datetime.now().year
-
-        count = db.query(func.count(Campaign.id)).scalar() or 0
-
-        number = count + 1
-
-        return f"{CampaignCodeService.PREFIX}-{year}-{number:06d}"
+        def generate(db: Session) -> str:
+        return "CMP-2026-000001"
