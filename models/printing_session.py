@@ -5,61 +5,89 @@ from sqlalchemy import (
     Float,
     String,
     ForeignKey,
-    Text
 )
 
 from sqlalchemy.orm import (
     Mapped,
     mapped_column,
-    relationship
+    relationship,
 )
 
-from models.base import Base, TimestampMixin
+from models.base import (
+    Base,
+    UUIDMixin,
+    TimestampMixin,
+)
 
 
-class PrintingSession(Base, TimestampMixin):
+class PrintingSession(
+    Base,
+    UUIDMixin,
+    TimestampMixin,
+):
 
     __tablename__ = "printing_sessions"
 
     id: Mapped[int] = mapped_column(
         Integer,
-        primary_key=True
+        primary_key=True,
     )
 
-    media_roll_id: Mapped[int] = mapped_column(
-        ForeignKey("media_rolls.id")
+    production_batch_id: Mapped[int] = mapped_column(
+        ForeignKey("production_batches.id"),
+        index=True,
     )
 
     printer_id: Mapped[int] = mapped_column(
-        ForeignKey("printers.id")
+        ForeignKey("printers.id"),
+        index=True,
+    )
+
+    session_number: Mapped[int] = mapped_column(
+        Integer,
+        default=1,
     )
 
     operator_name: Mapped[str | None] = mapped_column(
         String(150),
-        nullable=True
+        nullable=True,
     )
 
-    campaign_code: Mapped[str | None] = mapped_column(
-        String(100),
-        nullable=True
+    shift: Mapped[str] = mapped_column(
+        String(30),
+        default="DAY",
     )
 
-    artwork_name: Mapped[str | None] = mapped_column(
-        String(250),
-        nullable=True
+    planned_sqft: Mapped[float] = mapped_column(
+        Float,
+        default=0,
     )
 
-    opening_sqft: Mapped[float] = mapped_column(
-        Float
+    printed_sqft: Mapped[float] = mapped_column(
+        Float,
+        default=0,
     )
 
-    closing_sqft: Mapped[float] = mapped_column(
-        Float
+    wastage_sqft: Mapped[float] = mapped_column(
+        Float,
+        default=0,
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(30),
+        default="IN_PROGRESS",
     )
 
     remarks: Mapped[str | None] = mapped_column(
-        Text,
-        nullable=True
+        String(500),
+        nullable=True,
     )
 
-    media_roll = relationship("MediaRoll")
+    production_batch = relationship(
+        "ProductionBatch",
+        back_populates="printing_sessions",
+    )
+
+    printer = relationship(
+        "Printer",
+    )
