@@ -9,14 +9,16 @@ from models.campaign import Campaign
 class CampaignCodeService:
 
     PREFIX = "CMP"
-    
+
     @staticmethod
-    def generate(db: Session) -> str:
+    def generate(db: Session):
 
         year = datetime.now().year
 
-        count = db.query(func.count(Campaign.id)).scalar() or 0
+        count = (
+            db.query(func.count(Campaign.id))
+            .scalar()
+            or 0
+        )
 
-        number = count + 1
-
-        return f"{CampaignCodeService.PREFIX}-{year}-{number:06d}"
+        return f"CMP-{year}-{count + 1:06d}"
