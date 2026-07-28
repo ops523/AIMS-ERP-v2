@@ -282,3 +282,16 @@ class InventoryTransactionService:
             user=user,
 
         )
+
+        @staticmethod
+        def reserve_batch(
+        db,
+        batch,
+        ):
+    """
+    Reserve inventory for all allocations
+    belonging to this batch.
+
+    Implementation added in next sprint.
+    """
+        pass
