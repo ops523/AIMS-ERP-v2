@@ -34,3 +34,5 @@ from .warehouse import Warehouse
 from .wastage import Wastage
 
 from .production_allocation import ProductionAllocation
+
+from .document_sequence import DocumentSequence
