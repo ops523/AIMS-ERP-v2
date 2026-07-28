@@ -9,7 +9,8 @@ from models.campaign import Campaign
 class CampaignCodeService:
 
     PREFIX = "CMP"
-
+    
     @staticmethod
-        def generate(db: Session) -> str:
+    def generate(db: Session) -> str:
+        
         return "CMP-2026-000001"
