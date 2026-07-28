@@ -66,3 +66,9 @@ class ProductionBatch(
         back_populates="production_batch",
         cascade="all, delete-orphan",
     )
+    
+    printing_sessions = relationship(
+    "PrintingSession",
+    back_populates="production_batch",
+    cascade="all, delete-orphan",
+    )
