@@ -2,11 +2,13 @@ from sqlalchemy.orm import Session
 
 from models.campaign import Campaign
 from models.campaign_version import CampaignVersion
+from models.campaign_artwork import CampaignArtwork
+from models.campaign_location import CampaignLocation
 
 from repositories.campaign_repository import CampaignRepository
 
 from services.campaign_code_service import CampaignCodeService
-from services.import_batch_service import ImportBatchService
+from services.activity_log_service import ActivityLogService
 
 
 class CampaignService:
@@ -14,36 +16,77 @@ class CampaignService:
     @staticmethod
     def create_campaign(
         db: Session,
-        campaign: Campaign
+        campaign: Campaign,
+        version: CampaignVersion,
+        artworks: list[CampaignArtwork],
+        locations: list[CampaignLocation],
     ):
 
-        campaign.campaign_code = CampaignCodeService.generate(db)
+        try:
 
-        CampaignRepository.create_campaign(
-            db,
-            campaign
-        )
+            # ---------------------------------------
+            # Generate Campaign Code
+            # ---------------------------------------
 
-        version = CampaignVersion(
+            campaign.campaign_code = CampaignCodeService.generate(db)
 
-            campaign_id=campaign.id,
+            db.add(campaign)
+            db.flush()
 
-            version_no=1,
+            # ---------------------------------------
+            # Campaign Version
+            # ---------------------------------------
 
-            version_name="V1",
+            version.campaign_id = campaign.id
 
-            import_batch=ImportBatchService.generate(db)
+            db.add(version)
+            db.flush()
 
-        )
+            # ---------------------------------------
+            # Artworks
+            # ---------------------------------------
 
-        CampaignRepository.create_version(
-            db,
-            version
-        )
+            for artwork in artworks:
 
-        db.commit()
+                artwork.campaign_version_id = version.id
 
-        db.refresh(campaign)
-        db.refresh(version)
+            db.add_all(artworks)
 
-        return campaign, version
+            # ---------------------------------------
+            # Locations
+            # ---------------------------------------
+
+            for location in locations:
+
+                location.campaign_version_id = version.id
+
+            db.add_all(locations)
+
+            # ---------------------------------------
+            # Commit Once
+            # ---------------------------------------
+
+            db.commit()
+
+            db.refresh(campaign)
+            db.refresh(version)
+
+            # ---------------------------------------
+            # Activity Log
+            # ---------------------------------------
+
+            ActivityLogService.log(
+                db=db,
+                module="Campaign",
+                reference=campaign.campaign_code,
+                activity="Campaign Created",
+                performed_by="Admin",
+            )
+
+            return campaign, version
+
+        except Exception:
+
+            db.rollback()
+
+            raise
