@@ -162,3 +162,33 @@ def seed_database(db: Session):
     document_type="PACKAGING",
     prefix="PK",
     ),
+
+    SystemSetting(
+    setting_key="DEFAULT_ROLL_SIZE",
+    setting_value="1250",
+    )
+
+    SystemSetting(
+    setting_key="PRINT_WASTAGE_PERCENT",
+    setting_value="12",
+    )
+
+    SystemSetting(
+    setting_key="GUM_PER_1000_SQFT",
+    setting_value="5",
+    )
+
+    SystemSetting(
+    setting_key="TRANSIT_DAYS",
+    setting_value="2",
+    )
+
+    SystemSetting(
+    setting_key="NIGHT_SHIFT_MULTIPLIER",
+    setting_value="2",
+    )
+
+    SystemSetting(
+    setting_key="QR_PREFIX",
+    setting_value="ADW",
+    )
