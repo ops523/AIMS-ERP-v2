@@ -7,6 +7,9 @@ from models.warehouse import Warehouse
 from models.media_product import MediaProduct
 from models.user import User
 
+from models.document_sequence import DocumentSequence
+from models.system_setting import SystemSetting
+
 
 def seed_database(db: Session):
 
