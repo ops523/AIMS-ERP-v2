@@ -15,4 +15,4 @@ class ClientCodeService:
             func.count(Client.id)
         ).scalar() or 0
 
-        return f"{ClientCodeService.PREFIX}-{count + 1:06d}"
+        f"{ClientCodeService.PREFIX}-{(count + 1):06d}
