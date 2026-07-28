@@ -132,3 +132,33 @@ def seed_database(db: Session):
         )
 
     db.commit()
+
+    DocumentSequence(
+    document_type="PRODUCTION_BATCH",
+    prefix="PB",
+    ),
+
+    DocumentSequence(
+    document_type="PRINTING_SESSION",
+    prefix="PS",
+    ),
+
+    DocumentSequence(
+    document_type="MEDIA_ROLL",
+    prefix="MR",
+    ),
+
+    DocumentSequence(
+    document_type="INVENTORY_TRANSACTION",
+    prefix="IT",
+    ),
+
+    DocumentSequence(
+    document_type="DISPATCH",
+    prefix="DS",
+    ),
+
+    DocumentSequence(
+    document_type="PACKAGING",
+    prefix="PK",
+    ),
