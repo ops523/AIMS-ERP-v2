@@ -1,3 +1,5 @@
+from sqlalchemy.orm import Session
+
 from models.activity_log import ActivityLog
 
 
@@ -5,25 +7,27 @@ class ActivityLogService:
 
     @staticmethod
     def log(
-        db,
-        module,
-        action,
-        reference_number,
-        remarks="",
-        user=None,
+        db: Session,
+        module: str,
+        reference: str,
+        activity: str,
+        performed_by: str,
     ):
 
-        log = ActivityLog(
+        db.add(
 
-            module=module,
+            ActivityLog(
 
-            action=action,
+                module=module,
 
-            reference_number=reference_number,
+                reference=reference,
 
-            remarks=remarks,
+                activity=activity,
 
-            user=user,
+                performed_by=performed_by,
+
+            )
+
         )
 
-        db.add(log)
+        db.commit()
