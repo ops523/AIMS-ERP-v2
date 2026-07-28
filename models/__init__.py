@@ -31,6 +31,7 @@ from .user import User
 
 from .warehouse import Warehouse
 
+from .system_setting import SystemSetting
 from .wastage import Wastage
 
 from .production_allocation import ProductionAllocation
