@@ -1,3 +1,7 @@
+from core.startup import startup
+
+startup()
+
 import streamlit as st
 
 st.set_page_config(
