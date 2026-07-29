@@ -1,41 +1,38 @@
-from models.production_allocation import (
-    ProductionAllocation,
-)
+from sqlalchemy.orm import Session
+
+from models.production_allocation import ProductionAllocation
 
 from repositories.production_allocation_repository import (
     ProductionAllocationRepository,
-)
-
-from constants.production_allocation import (
-    ALLOCATED,
 )
 
 
 class ProductionAllocationService:
 
     @staticmethod
-    def allocate_roll(
-        db,
-        production_item,
-        media_roll,
-        sqft,
+    def allocate(
+        db: Session,
+        batch,
+        artwork,
+        required_sqft,
     ):
 
         allocation = ProductionAllocation(
 
-            production_item_id=production_item.id,
+            production_batch_id=batch.id,
 
-            media_roll_id=media_roll.id,
+            campaign_artwork_id=artwork.id,
 
-            allocated_sqft=sqft,
+            allocated_sqft=required_sqft,
 
-            balance_sqft=sqft,
+            printed_sqft=0,
 
-            status=ALLOCATED,
-
+            status="ALLOCATED",
         )
 
-        return ProductionAllocationRepository.create(
+        ProductionAllocationRepository.create(
             db,
             allocation,
         )
+
+        return allocation
