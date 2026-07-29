@@ -6,8 +6,6 @@ import models
 
 from services.seed_service import seed_database
 
-st.sidebar.write(engine.url)
-
 def initialize_database():
 
     Base.metadata.create_all(bind=engine)
