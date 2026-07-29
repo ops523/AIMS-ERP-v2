@@ -78,3 +78,12 @@ class ProductionAllocation(
         "MediaRoll",
         back_populates="allocations",
     )
+
+    production_batch = relationship(
+    "ProductionBatch",
+    back_populates="allocations",
+    )
+
+    campaign_artwork = relationship(
+    "CampaignArtwork",
+    )
