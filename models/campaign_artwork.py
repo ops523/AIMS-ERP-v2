@@ -73,3 +73,8 @@ class CampaignArtwork(Base, UUIDMixin, TimestampMixin):
     "ProductionItem",
     back_populates="campaign_artwork",
     )
+
+    allocations = relationship(
+    "ProductionAllocation",
+    back_populates="campaign_artwork",
+    )
