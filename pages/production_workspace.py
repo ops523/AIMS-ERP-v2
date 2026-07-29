@@ -1,8 +1,5 @@
 import streamlit as st
 
-from init_db import initialize_database
-initialize_database()
-
 from components.production_dashboard import ProductionDashboard
 from components.production_batch_wizard import ProductionBatchWizard
 from components.production_batch_list import ProductionBatchList
