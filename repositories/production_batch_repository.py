@@ -60,3 +60,14 @@ class ProductionBatchRepository:
         return db.query(
             ProductionBatch
         ).count()
+
+    @staticmethod
+    def get_all(db):
+
+        return (
+        db.query(ProductionBatch)
+        .order_by(
+            ProductionBatch.id.desc()
+        )
+        .all()
+        )
