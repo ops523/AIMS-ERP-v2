@@ -19,9 +19,9 @@ load_theme()
 # Initialize Database
 # ---------------------------------------------------------
 
-from init_db import initialize_database
+from core.startup import startup
 
-initialize_database()
+startup()
 
 # ---------------------------------------------------------
 # Dashboard
