@@ -1,3 +1,7 @@
+from core.startup import startup
+
+startup()
+
 import streamlit as st
 
 from components.production_dashboard import ProductionDashboard
