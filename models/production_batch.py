@@ -69,6 +69,12 @@ class ProductionBatch(
         cascade="all, delete-orphan",
     )
 
+    allocations = relationship(
+    "ProductionAllocation",
+    back_populates="production_batch",
+    cascade="all, delete-orphan",
+    )
+
     @property
     def total_planned_sqft(self):
 
