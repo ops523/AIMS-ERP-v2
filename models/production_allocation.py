@@ -38,6 +38,12 @@ class ProductionAllocation(
         )
     )
 
+    campaign_artwork_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "campaign_artworks.id"
+        )
+    )
+
     production_batch_id: Mapped[int] = mapped_column(
         ForeignKey(
             "production_batches.id"
