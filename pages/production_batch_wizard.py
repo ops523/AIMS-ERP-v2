@@ -1,8 +1,8 @@
+import streamlit as st
+
 from core.startup import startup
 
 startup()
-
-import streamlit as st
 
 st.set_page_config(
     page_title="Production Batch Wizard",
