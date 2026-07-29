@@ -1,38 +1,52 @@
 import streamlit as st
 
+from database import get_session
+
 from repositories.production_batch_repository import (
     ProductionBatchRepository,
 )
 
 
-def show(db):
+class ProductionBatchList:
 
-    batches = ProductionBatchRepository.get_all(db)
+    @staticmethod
+    def render():
 
-    st.subheader("Production Batches")
+        db = get_session()
 
-    if not batches:
+        try:
 
-        st.info("No Production Batches Found")
+            batches = ProductionBatchRepository.get_all(db)
 
-        return
+            st.subheader("Production Batches")
 
-    rows = []
+            if not batches:
 
-    for batch in batches:
+                st.info("No Production Batches Found")
 
-        rows.append(
-            {
-                "Batch": batch.batch_number,
-                "Campaign": batch.campaign_name,
-                "Printer": batch.printer.printer_name,
-                "Status": batch.status,
-                "Target Sqft": batch.total_sqft,
-                "Printed": batch.printed_sqft,
-            }
-        )
+                return
 
-    st.dataframe(
-        rows,
-        width="stretch",
-    )
+            rows = []
+
+            for batch in batches:
+
+                rows.append(
+                    {
+                        "Batch": batch.batch_number,
+                        "Printer": batch.printer.printer_name
+                        if batch.printer else "",
+                        "Status": batch.status,
+                        "Planned Sq Ft": batch.total_planned_sqft,
+                        "Printed Sq Ft": batch.total_printed_sqft,
+                        "Completion %": batch.completion_percentage,
+                    }
+                )
+
+            st.dataframe(
+                rows,
+                width="stretch",
+                hide_index=True,
+            )
+
+        finally:
+            db.close()
