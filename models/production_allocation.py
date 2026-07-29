@@ -98,4 +98,5 @@ class ProductionAllocation(
 
     campaign_artwork = relationship(
     "CampaignArtwork",
+    back_populates="allocations",
     )
