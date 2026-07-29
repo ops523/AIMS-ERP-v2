@@ -1,15 +1,15 @@
 from init_db import initialize_database
 
-_bootstrapped = False
+_initialized = False
 
 
 def bootstrap():
 
-    global _bootstrapped
+    global _initialized
 
-    if _bootstrapped:
+    if _initialized:
         return
 
     initialize_database()
 
-    _bootstrapped = True
+    _initialized = True
