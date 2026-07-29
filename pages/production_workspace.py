@@ -1,8 +1,8 @@
+import streamlit as st
+
 from core.startup import startup
 
 startup()
-
-import streamlit as st
 
 from components.production_dashboard import ProductionDashboard
 from components.production_batch_wizard import ProductionBatchWizard
