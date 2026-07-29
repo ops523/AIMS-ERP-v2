@@ -5,7 +5,7 @@ from core.startup import startup
 
 startup()
 
-from database import get_session
+from database import SessionLocal
 
 from services.roll_inventory_service import (
     RollInventoryService,
