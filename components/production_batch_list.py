@@ -1,37 +1,38 @@
-import pandas as pd
 import streamlit as st
-
-from database import SessionLocal
 
 from repositories.production_batch_repository import (
     ProductionBatchRepository,
 )
 
 
-class ProductionBatchList:
+def show(db):
 
-    @staticmethod
-    def render():
+    batches = ProductionBatchRepository.get_all(db)
 
-        db = SessionLocal()
+    st.subheader("Production Batches")
 
-        batches = ProductionBatchRepository.get_all(db)
+    if not batches:
 
-        rows = []
+        st.info("No Production Batches Found")
 
-        for batch in batches:
+        return
 
-            rows.append(
-                {
-                    "Batch": batch.batch_number,
-                    "Printer": batch.printer.printer_name,
-                    "Status": batch.status,
-                    "Remarks": batch.remarks,
-                }
-            )
+    rows = []
 
-        st.dataframe(
-            pd.DataFrame(rows),
-            use_container_width=True,
-            hide_index=True,
+    for batch in batches:
+
+        rows.append(
+            {
+                "Batch": batch.batch_number,
+                "Campaign": batch.campaign_name,
+                "Printer": batch.printer.printer_name,
+                "Status": batch.status,
+                "Target Sqft": batch.total_sqft,
+                "Printed": batch.printed_sqft,
+            }
         )
+
+    st.dataframe(
+        rows,
+        width="stretch",
+    )
