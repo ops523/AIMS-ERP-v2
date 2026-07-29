@@ -1,3 +1,7 @@
+from core.startup import startup
+
+startup()
+
 import pandas as pd
 import streamlit as st
 
