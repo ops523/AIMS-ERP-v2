@@ -8,9 +8,14 @@ from services.seed_service import seed_database
 
 from core.storage_manager import StorageManager
 
+
 def initialize_database():
 
+    # Create storage folders
+
     StorageManager.initialize()
+
+    # Create database tables
 
     Base.metadata.create_all(bind=engine)
 
