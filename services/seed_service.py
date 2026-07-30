@@ -152,46 +152,71 @@ def seed_database(db: Session):
 
     if db.query(DocumentSequence).count() == 0:
 
-        db.add_all([
+    db.add_all([
 
-            DocumentSequence(
-                document_type="PRODUCTION_BATCH",
-                prefix="PB",
-                last_number=0,
-            ),
+        DocumentSequence(
+            document_type="CAMPAIGN",
+            prefix="CMP",
+            last_number=0,
+        ),
 
-            DocumentSequence(
-                document_type="PRINTING_SESSION",
-                prefix="PS",
-                last_number=0,
-            ),
+        DocumentSequence(
+            document_type="CAMPAIGN_VERSION",
+            prefix="CV",
+            last_number=0,
+        ),
 
-            DocumentSequence(
-                document_type="MEDIA_ROLL",
-                prefix="MR",
-                last_number=0,
-            ),
+        DocumentSequence(
+            document_type="PRODUCTION_BATCH",
+            prefix="PB",
+            last_number=0,
+        ),
 
-            DocumentSequence(
-                document_type="INVENTORY_TRANSACTION",
-                prefix="IT",
-                last_number=0,
-            ),
+        DocumentSequence(
+            document_type="PRINTING_SESSION",
+            prefix="PS",
+            last_number=0,
+        ),
 
-            DocumentSequence(
-                document_type="DISPATCH",
-                prefix="DS",
-                last_number=0,
-            ),
+        DocumentSequence(
+            document_type="MEDIA_ROLL",
+            prefix="MR",
+            last_number=0,
+        ),
 
-            DocumentSequence(
-                document_type="PACKAGING",
-                prefix="PK",
-                last_number=0,
-            ),
+        DocumentSequence(
+            document_type="PACKAGE",
+            prefix="PK",
+            last_number=0,
+        ),
 
-        ])
+        DocumentSequence(
+            document_type="DISPATCH",
+            prefix="DS",
+            last_number=0,
+        ),
 
+        DocumentSequence(
+            document_type="INVENTORY_TRANSACTION",
+            prefix="IT",
+            last_number=0,
+        ),
+
+        DocumentSequence(
+            document_type="PURCHASE_ORDER",
+            prefix="PO",
+            last_number=0,
+        ),
+
+        DocumentSequence(
+            document_type="WAREHOUSE_TRANSFER",
+            prefix="WT",
+            last_number=0,
+        ),
+
+    ])
+
+    db.commit()
     # ==========================================================
     # SYSTEM SETTINGS
     # ==========================================================
