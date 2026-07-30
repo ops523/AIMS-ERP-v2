@@ -6,14 +6,20 @@ import models
 
 from services.seed_service import seed_database
 
+from core.storage_manager import StorageManager
+
 def initialize_database():
+
+    StorageManager.initialize()
 
     Base.metadata.create_all(bind=engine)
 
     db = SessionLocal()
 
     try:
+
         seed_database(db)
 
     finally:
+
         db.close()
