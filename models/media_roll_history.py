@@ -10,8 +10,8 @@ from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 
 from models.base import Base
-from models.mixins import UUIDMixin
-from models.mixins import TimestampMixin
+from models.base import UUIDMixin
+from models.base import TimestampMixin
 
 
 class MediaRollHistory(
