@@ -1,73 +1,45 @@
 from sqlalchemy.orm import Session
 
+from repositories.base_repository import BaseRepository
+
 from models.production_batch import ProductionBatch
 
 
-class ProductionBatchRepository:
+class ProductionBatchRepository(
+    BaseRepository[ProductionBatch]
+):
 
-    @staticmethod
-    def get_all(db: Session):
+    model = ProductionBatch
 
-        return (
-            db.query(ProductionBatch)
-            .order_by(ProductionBatch.id.desc())
-            .all()
-        )
-
-    @staticmethod
-    def get_by_id(
+    @classmethod
+    def get_open_batches(
+        cls,
         db: Session,
-        batch_id: int,
     ):
 
         return (
-            db.query(ProductionBatch)
+            db.query(cls.model)
             .filter(
-                ProductionBatch.id == batch_id
+                cls.model.status != "CLOSED"
             )
-            .first()
+            .order_by(
+                cls.model.created_at.desc()
+            )
+            .all()
         )
 
-    @staticmethod
+    @classmethod
     def get_by_batch_number(
+        cls,
         db: Session,
         batch_number: str,
     ):
 
         return (
-            db.query(ProductionBatch)
+            db.query(cls.model)
             .filter(
-                ProductionBatch.batch_number == batch_number
+                cls.model.batch_number
+                == batch_number
             )
             .first()
-        )
-
-    @staticmethod
-    def add(
-        db: Session,
-        batch: ProductionBatch,
-    ):
-
-        db.add(batch)
-        db.commit()
-        db.refresh(batch)
-
-        return batch
-
-    @staticmethod
-    def count(db: Session):
-
-        return db.query(
-            ProductionBatch
-        ).count()
-
-    @staticmethod
-    def get_all(db):
-
-        return (
-        db.query(ProductionBatch)
-        .order_by(
-            ProductionBatch.id.desc()
-        )
-        .all()
         )
