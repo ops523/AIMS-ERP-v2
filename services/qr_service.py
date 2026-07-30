@@ -1,14 +1,14 @@
+from datetime import datetime
+
+from sqlalchemy.orm import Session
+
+from components.qr_label_generator import QRLabelGenerator
+
+from core.storage_manager import StorageManager
+
 from repositories.media_roll_history_repository import (
     MediaRollHistoryRepository,
 )
-
-from models.media_roll_history import (
-    MediaRollHistory,
-)
-
-from constants.qr_status import CREATED
-
-from constants.qr_events import QR_CREATED
 
 from services.activity_logger import ActivityLogger
 
@@ -17,111 +17,89 @@ class QRService:
 
     COMPANY_PREFIX = "ADW"
 
-    @staticmethod
-    def generate_roll_payload(
-        media_roll,
+    MEDIA_ROLL = "MR"
+
+    PACKAGE = "PK"
+
+    DISPATCH = "DS"
+
+    @classmethod
+    def generate_payload(
+        cls,
+        entity: str,
+        uuid: str,
     ):
 
-        return (
-            f"{QRService.COMPANY_PREFIX}"
-            f"|MR|"
-            f"{media_roll.uuid}"
+        return f"{cls.COMPANY_PREFIX}|{entity}|{uuid}"
+
+    @classmethod
+    def generate_media_roll_qr(
+        cls,
+        db: Session,
+        media_roll,
+        user: str,
+    ):
+
+        payload = cls.generate_payload(
+
+            cls.MEDIA_ROLL,
+
+            str(media_roll.uuid),
+
         )
 
-    @staticmethod
-    def record_creation(
-        db,
-        media_roll,
-        user="System",
-    ):
+        qr_path = StorageManager.qr_path(
 
-        history = MediaRollHistory(
+            "media_rolls",
+
+            media_roll.roll_number,
+
+        )
+
+        QRLabelGenerator.generate(
+
+            payload,
+
+            qr_path,
+
+        )
+
+        media_roll.qr_payload = payload
+
+        media_roll.qr_image_path = str(qr_path)
+
+        media_roll.qr_generated_on = datetime.now()
+
+        db.commit()
+
+        db.refresh(media_roll)
+
+        MediaRollHistoryRepository.add_event(
+
+            db=db,
 
             media_roll_id=media_roll.id,
 
-            event=QR_CREATED,
-
-            previous_status=None,
-
-            current_status=CREATED,
-
-            reference_type="Media Roll",
-
-            reference_number=media_roll.roll_number,
+            event="QR_GENERATED",
 
             remarks="QR Generated",
 
-            scanned_by=user,
+            performed_by=user,
 
         )
 
-        return (
-            MediaRollHistoryRepository.add(
-                db,
-                history,
-            )
-        )
+        ActivityLogger.log(
 
-    @staticmethod
-    def record_event(
-        db,
-        media_roll,
-        event,
-        previous_status,
-        current_status,
-        reference_type="",
-        reference_number="",
-        remarks="",
-        scanned_by="System",
-        location="",
-    ):
+            db=db,
 
-        history = MediaRollHistory(
+            module="QR",
 
-            media_roll_id=media_roll.id,
+            reference=media_roll.roll_number,
 
-            event=event,
+            activity="QR Generated",
 
-            previous_status=previous_status,
-
-            current_status=current_status,
-
-            reference_type=reference_type,
-
-            reference_number=reference_number,
-
-            remarks=remarks,
-
-            scanned_by=scanned_by,
-
-            location=location,
+            performed_by=user,
 
         )
 
-        return (
-            MediaRollHistoryRepository.add(
-                db,
-                history,
-            )
-        )
-
-    @staticmethod
-    def get_history(
-        db,
-        media_roll_id,
-    ):
-
-        return (
-            MediaRollHistoryRepository.get_history(
-                db,
-                media_roll_id,
-            )
-        )
-
-    ActivityLogger.log(
-        db=db,
-        module="QR",
-        reference=media_roll.roll_number,
-        activity=event,
-        performed_by=scanned_by,
-    )
+        return media_roll
