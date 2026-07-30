@@ -1,15 +1,27 @@
+from __future__ import annotations
+
+from datetime import datetime
+
 from sqlalchemy.orm import Session
 
 from models.document_sequence import DocumentSequence
 
 
 class DocumentNumberService:
+    """
+    Central document numbering engine.
+
+    Example:
+
+    PB-2026-000001
+    MR-2026-000154
+    DS-2026-000010
+    """
 
     @staticmethod
-    def next(
+    def generate(
         db: Session,
         document_type: str,
-        prefix: str,
     ) -> str:
 
         sequence = (
@@ -21,15 +33,11 @@ class DocumentNumberService:
         )
 
         if sequence is None:
-
-            sequence = DocumentSequence(
-                document_type=document_type,
-                prefix=prefix,
-                last_number=0,
+            raise Exception(
+                f"No document sequence found for {document_type}"
             )
 
-            db.add(sequence)
-            db.flush()
+        year = datetime.now().year
 
         sequence.last_number += 1
 
@@ -38,6 +46,7 @@ class DocumentNumberService:
         db.refresh(sequence)
 
         return (
-            f"{sequence.prefix}"
+            f"{sequence.prefix}-"
+            f"{year}-"
             f"{sequence.last_number:06d}"
         )
