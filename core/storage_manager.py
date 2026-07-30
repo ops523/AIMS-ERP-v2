@@ -7,6 +7,10 @@ import shutil
 
 class StorageManager:
 
+    # ---------------------------------------------------------
+    # ROOT STORAGE
+    # ---------------------------------------------------------
+
     BASE_DIR = Path("storage")
 
     QR_DIR = BASE_DIR / "qr"
@@ -17,23 +21,22 @@ class StorageManager:
 
     TEMP_DIR = BASE_DIR / "temp"
 
+    # ---------------------------------------------------------
+    # INITIALIZE
+    # ---------------------------------------------------------
+
     @classmethod
     def initialize(cls):
 
         folders = [
 
             cls.QR_DIR / "media_rolls",
-
             cls.QR_DIR / "packages",
-
             cls.QR_DIR / "dispatch",
-
             cls.QR_DIR / "warehouse",
 
             cls.LABEL_DIR / "media_rolls",
-
             cls.LABEL_DIR / "packages",
-
             cls.LABEL_DIR / "dispatch",
 
             cls.UPLOAD_DIR,
@@ -49,11 +52,15 @@ class StorageManager:
                 exist_ok=True,
             )
 
+    # ---------------------------------------------------------
+    # FOLDER HELPERS
+    # ---------------------------------------------------------
+
     @classmethod
     def qr_folder(
         cls,
         entity: str,
-    ) -> Path:
+    ):
 
         folder = cls.QR_DIR / entity
 
@@ -68,7 +75,7 @@ class StorageManager:
     def label_folder(
         cls,
         entity: str,
-    ) -> Path:
+    ):
 
         folder = cls.LABEL_DIR / entity
 
@@ -79,46 +86,54 @@ class StorageManager:
 
         return folder
 
-    @classmethod
-    def build_qr_filename(
-        cls,
-        document_number: str,
-    ) -> str:
+    # ---------------------------------------------------------
+    # FILE NAME HELPERS
+    # ---------------------------------------------------------
 
-        safe = (
-            document_number
+    @staticmethod
+    def sanitize_filename(
+        filename: str,
+    ):
+
+        return (
+            filename
             .replace("/", "_")
             .replace("\\", "_")
             .replace(" ", "_")
+            .replace(":", "_")
         )
-
-        return f"{safe}.png"
 
     @classmethod
-    def build_label_filename(
+    def qr_filename(
         cls,
         document_number: str,
-    ) -> str:
+    ):
 
-        safe = (
-            document_number
-            .replace("/", "_")
-            .replace("\\", "_")
-            .replace(" ", "_")
-        )
+        return f"{cls.sanitize_filename(document_number)}.png"
 
-        return f"{safe}_label.png"
+    @classmethod
+    def label_filename(
+        cls,
+        document_number: str,
+    ):
+
+        return f"{cls.sanitize_filename(document_number)}_label.png"
+
+    # ---------------------------------------------------------
+    # FULL PATHS
+    # ---------------------------------------------------------
 
     @classmethod
     def qr_path(
         cls,
         entity: str,
         document_number: str,
-    ) -> Path:
+    ):
 
         return (
             cls.qr_folder(entity)
-            / cls.build_qr_filename(document_number)
+            /
+            cls.qr_filename(document_number)
         )
 
     @classmethod
@@ -126,18 +141,25 @@ class StorageManager:
         cls,
         entity: str,
         document_number: str,
-    ) -> Path:
+    ):
 
         return (
             cls.label_folder(entity)
-            / cls.build_label_filename(document_number)
+            /
+            cls.label_filename(document_number)
         )
 
-    @classmethod
-    def delete_file(
-        cls,
-        path: str | Path,
-    ):
+    # ---------------------------------------------------------
+    # FILE UTILITIES
+    # ---------------------------------------------------------
+
+    @staticmethod
+    def exists(path):
+
+        return Path(path).exists()
+
+    @staticmethod
+    def delete(path):
 
         path = Path(path)
 
@@ -145,18 +167,31 @@ class StorageManager:
 
             path.unlink()
 
-    @classmethod
-    def copy_file(
-        cls,
-        source: str | Path,
-        destination: str | Path,
+    @staticmethod
+    def copy(
+        source,
+        destination,
     ):
 
-        shutil.copy2(source, destination)
+        shutil.copy2(
+            source,
+            destination,
+        )
 
-    @classmethod
+    @staticmethod
+    def move(
+        source,
+        destination,
+    ):
+
+        shutil.move(
+            source,
+            destination,
+        )
+
+    @staticmethod
     def timestamp():
 
         return datetime.now().strftime(
-            "%Y%m%d%H%M%S"
+            "%Y%m%d_%H%M%S"
         )
