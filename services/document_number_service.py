@@ -9,13 +9,15 @@ from models.document_sequence import DocumentSequence
 
 class DocumentNumberService:
     """
-    Central document numbering engine.
+    Central Document Number Engine
 
-    Example:
+    Examples
 
     PB-2026-000001
-    MR-2026-000154
-    DS-2026-000010
+
+    MR-2026-000001
+
+    DS-2026-000001
     """
 
     @staticmethod
@@ -33,13 +35,18 @@ class DocumentNumberService:
         )
 
         if sequence is None:
+
             raise Exception(
-                f"No document sequence found for {document_type}"
+                f"Document Sequence not found : {document_type}"
             )
 
         year = datetime.now().year
 
         sequence.last_number += 1
+
+        number = sequence.last_number
+
+        db.flush()
 
         db.commit()
 
@@ -48,5 +55,5 @@ class DocumentNumberService:
         return (
             f"{sequence.prefix}-"
             f"{year}-"
-            f"{sequence.last_number:06d}"
+            f"{number:06d}"
         )
