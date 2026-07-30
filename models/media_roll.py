@@ -139,3 +139,10 @@ class MediaRoll(Base, UUIDMixin, TimestampMixin):
     back_populates="media_roll",
     cascade="all, delete-orphan",
     )
+
+    history = relationship(
+    "MediaRollHistory",
+    back_populates="media_roll",
+    cascade="all, delete-orphan",
+    order_by="MediaRollHistory.created_at",
+    )
