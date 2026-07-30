@@ -1,17 +1,18 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
 from sqlalchemy.orm import relationship
 
 from sqlalchemy import (
     Boolean,
     Date,
+    DateTime,
     Float,
     ForeignKey,
     Integer,
     String,
-    Text
+    Text,
 )
 
 from sqlalchemy.orm import (
@@ -100,8 +101,23 @@ class MediaRoll(Base, UUIDMixin, TimestampMixin):
     )
 
     qr_code: Mapped[str | None] = mapped_column(
-        String(255),
-        nullable=True
+    String(255),
+    nullable=True,
+    )
+
+    qr_payload: Mapped[str | None] = mapped_column(
+    String(255),
+    nullable=True,
+    )
+
+    qr_image_path: Mapped[str | None] = mapped_column(
+    String(500),
+    nullable=True,
+    )
+
+    qr_generated_on: Mapped[datetime | None] = mapped_column(
+    DateTime,
+    nullable=True,
     )
 
     status: Mapped[str] = mapped_column(
