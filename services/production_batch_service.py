@@ -1,9 +1,13 @@
-from database import SessionLocal
+from sqlalchemy.orm import Session
 
 from models.production_batch import ProductionBatch
 
 from repositories.production_batch_repository import (
     ProductionBatchRepository,
+)
+
+from services.document_number_service import (
+    DocumentNumberService,
 )
 
 from constants.production_batch import DRAFT
@@ -12,33 +16,18 @@ from constants.production_batch import DRAFT
 class ProductionBatchService:
 
     @staticmethod
-    def generate_batch_number():
-
-        db = SessionLocal()
-
-        try:
-
-            count = (
-                ProductionBatchRepository.count(db)
-                + 1
-            )
-
-            return f"PB{count:06d}"
-
-        finally:
-
-            db.close()
-
-    @staticmethod
     def create_batch(
-        db,
-        printer_id,
-        remarks="",
+        db: Session,
+        printer_id: int,
+        remarks: str = "",
     ):
 
         batch = ProductionBatch(
 
-            batch_number=ProductionBatchService.generate_batch_number(),
+            batch_number=DocumentNumberService.generate(
+                db,
+                "PRODUCTION_BATCH",
+            ),
 
             printer_id=printer_id,
 
