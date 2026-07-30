@@ -14,7 +14,7 @@ def initialize_database():
 
     Base.metadata.create_all(bind=engine)
 
-        db = SessionLocal()
+    db = SessionLocal()
 
     try:
 
