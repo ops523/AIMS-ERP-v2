@@ -1,22 +1,117 @@
-from pathlib import Path
+from repositories.media_roll_history_repository import (
+    MediaRollHistoryRepository,
+)
 
-import qrcode
+from models.media_roll_history import (
+    MediaRollHistory,
+)
 
+from constants.qr_status import CREATED
 
-QR_FOLDER = Path("qr")
-
-QR_FOLDER.mkdir(exist_ok=True)
+from constants.qr_events import QR_CREATED
 
 
 class QRService:
 
+    COMPANY_PREFIX = "ADW"
+
     @staticmethod
-    def generate(asset_id: str):
+    def generate_roll_payload(
+        media_roll,
+    ):
 
-        filename = QR_FOLDER / f"{asset_id}.png"
+        return (
+            f"{QRService.COMPANY_PREFIX}"
+            f"|MR|"
+            f"{media_roll.uuid}"
+        )
 
-        img = qrcode.make(asset_id)
+    @staticmethod
+    def record_creation(
+        db,
+        media_roll,
+        user="System",
+    ):
 
-        img.save(filename)
+        history = MediaRollHistory(
 
-        return str(filename)
+            media_roll_id=media_roll.id,
+
+            event=QR_CREATED,
+
+            previous_status=None,
+
+            current_status=CREATED,
+
+            reference_type="Media Roll",
+
+            reference_number=media_roll.roll_number,
+
+            remarks="QR Generated",
+
+            scanned_by=user,
+
+        )
+
+        return (
+            MediaRollHistoryRepository.add(
+                db,
+                history,
+            )
+        )
+
+    @staticmethod
+    def record_event(
+        db,
+        media_roll,
+        event,
+        previous_status,
+        current_status,
+        reference_type="",
+        reference_number="",
+        remarks="",
+        scanned_by="System",
+        location="",
+    ):
+
+        history = MediaRollHistory(
+
+            media_roll_id=media_roll.id,
+
+            event=event,
+
+            previous_status=previous_status,
+
+            current_status=current_status,
+
+            reference_type=reference_type,
+
+            reference_number=reference_number,
+
+            remarks=remarks,
+
+            scanned_by=scanned_by,
+
+            location=location,
+
+        )
+
+        return (
+            MediaRollHistoryRepository.add(
+                db,
+                history,
+            )
+        )
+
+    @staticmethod
+    def get_history(
+        db,
+        media_roll_id,
+    ):
+
+        return (
+            MediaRollHistoryRepository.get_history(
+                db,
+                media_roll_id,
+            )
+        )
