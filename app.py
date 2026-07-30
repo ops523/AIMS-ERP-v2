@@ -23,11 +23,6 @@ from core.startup import startup
 
 startup()
 
-from core.storage_manager import StorageManager
-import streamlit as st
-
-st.write(StorageManager.BASE_DIR.resolve())
-
 # ---------------------------------------------------------
 # Dashboard
 # ---------------------------------------------------------
