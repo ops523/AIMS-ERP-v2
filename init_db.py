@@ -16,10 +16,10 @@ def initialize_database():
 
     db = SessionLocal()
 
-    try:
+        try:
 
-        seed_database(db)
+            seed_database(db)
 
-    finally:
+        finally:
 
-        db.close()
+            db.close()
