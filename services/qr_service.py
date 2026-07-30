@@ -10,6 +10,8 @@ from constants.qr_status import CREATED
 
 from constants.qr_events import QR_CREATED
 
+from services.activity_logger import ActivityLogger
+
 
 class QRService:
 
@@ -115,3 +117,11 @@ class QRService:
                 media_roll_id,
             )
         )
+
+    ActivityLogger.log(
+        db=db,
+        module="QR",
+        reference=media_roll.roll_number,
+        activity=event,
+        performed_by=scanned_by,
+    )
