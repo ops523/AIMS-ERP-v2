@@ -1,58 +1,50 @@
 from sqlalchemy.orm import Session
 
-from models.media_roll_history import (
-    MediaRollHistory,
-)
+from repositories.base_repository import BaseRepository
+
+from models.media_roll_history import MediaRollHistory
 
 
-class MediaRollHistoryRepository:
+class MediaRollHistoryRepository(
+    BaseRepository[MediaRollHistory]
+):
 
-    @staticmethod
-    def add(
-        db: Session,
-        history: MediaRollHistory,
-    ):
+    model = MediaRollHistory
 
-        db.add(history)
-
-        db.commit()
-
-        db.refresh(history)
-
-        return history
-
-    @staticmethod
+    @classmethod
     def get_history(
+        cls,
         db: Session,
         media_roll_id: int,
     ):
 
         return (
-            db.query(MediaRollHistory)
+            db.query(cls.model)
             .filter(
-                MediaRollHistory.media_roll_id
+                cls.model.media_roll_id
                 == media_roll_id
             )
             .order_by(
-                MediaRollHistory.created_at
+                cls.model.created_at
             )
             .all()
         )
 
-    @staticmethod
+    @classmethod
     def latest(
+        cls,
         db: Session,
         media_roll_id: int,
     ):
 
         return (
-            db.query(MediaRollHistory)
+            db.query(cls.model)
             .filter(
-                MediaRollHistory.media_roll_id
+                cls.model.media_roll_id
                 == media_roll_id
             )
             .order_by(
-                MediaRollHistory.id.desc()
+                cls.model.id.desc()
             )
             .first()
         )
