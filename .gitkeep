@@ -1,0 +1,16 @@
+storage/.gitkeep
+
+storage/qr/.gitkeep
+storage/qr/media_rolls/.gitkeep
+storage/qr/packages/.gitkeep
+storage/qr/dispatch/.gitkeep
+storage/qr/warehouse/.gitkeep
+
+storage/labels/.gitkeep
+storage/labels/media_rolls/.gitkeep
+storage/labels/packages/.gitkeep
+storage/labels/dispatch/.gitkeep
+
+storage/uploads/.gitkeep
+
+storage/temp/.gitkeep
