@@ -1,322 +1,161 @@
-from __future__ import annotations
-
-from typing import List, Optional
-
-from sqlalchemy import func
-from sqlalchemy.orm import Session
-
+from repositories.base_repository import BaseRepository
 from models.media_roll import MediaRoll
 
 
-class MediaRollRepository:
+class MediaRollRepository(BaseRepository[MediaRoll]):
 
-    # ---------------------------------------------------------
-    # CREATE
-    # ---------------------------------------------------------
+    model = MediaRoll
 
-    @staticmethod
-    def create(
-        db: Session,
-        media_roll: MediaRoll,
-    ) -> MediaRoll:
-
-        db.add(media_roll)
-
-        db.commit()
-
-        db.refresh(media_roll)
-
-        return media_roll
-
-    # ---------------------------------------------------------
-    # UPDATE
-    # ---------------------------------------------------------
-
-    @staticmethod
-    def update(
-        db: Session,
-        media_roll: MediaRoll,
-    ) -> MediaRoll:
-
-        db.commit()
-
-        db.refresh(media_roll)
-
-        return media_roll
-
-    # ---------------------------------------------------------
-    # DELETE (Soft Delete)
-    # ---------------------------------------------------------
-
-    @staticmethod
-    def deactivate(
-        db: Session,
-        media_roll: MediaRoll,
-    ) -> MediaRoll:
-
-        media_roll.is_active = False
-
-        db.commit()
-
-        db.refresh(media_roll)
-
-        return media_roll
-
-    # ---------------------------------------------------------
-    # GET BY ID
-    # ---------------------------------------------------------
-
-    @staticmethod
-    def get_by_id(
-        db: Session,
-        media_roll_id: int,
-    ) -> Optional[MediaRoll]:
-
-        return (
-            db.query(MediaRoll)
-            .filter(MediaRoll.id == media_roll_id)
-            .first()
-        )
-
-    # ---------------------------------------------------------
-    # GET BY UUID
-    # ---------------------------------------------------------
-
-    @staticmethod
-    def get_by_uuid(
-        db: Session,
-        uuid: str,
-    ) -> Optional[MediaRoll]:
-
-        return (
-            db.query(MediaRoll)
-            .filter(MediaRoll.uuid == uuid)
-            .first()
-        )
-
-    # ---------------------------------------------------------
-    # GET BY ROLL NUMBER
-    # ---------------------------------------------------------
-
-    @staticmethod
+    @classmethod
     def get_by_roll_number(
-        db: Session,
+        cls,
+        db,
         roll_number: str,
-    ) -> Optional[MediaRoll]:
-
-        return (
-            db.query(MediaRoll)
-            .filter(MediaRoll.roll_number == roll_number)
-            .first()
-        )
-
-    # ---------------------------------------------------------
-    # GET BY QR PAYLOAD
-    # ---------------------------------------------------------
-
-    @staticmethod
-    def get_by_qr_payload(
-        db: Session,
-        payload: str,
-    ) -> Optional[MediaRoll]:
-
-        return (
-            db.query(MediaRoll)
-            .filter(MediaRoll.qr_payload == payload)
-            .first()
-        )
-
-    # ---------------------------------------------------------
-    # LIST ALL
-    # ---------------------------------------------------------
-
-    @staticmethod
-    def list_all(
-        db: Session,
-        active_only: bool = True,
-    ) -> List[MediaRoll]:
-
-        query = db.query(MediaRoll)
-
-        if active_only:
-
-            query = query.filter(
-                MediaRoll.is_active.is_(True)
-            )
-
-        return (
-            query
-            .order_by(
-                MediaRoll.created_at.desc()
-            )
-            .all()
-        )
-
-    # ---------------------------------------------------------
-    # SEARCH
-    # ---------------------------------------------------------
-
-    @staticmethod
-    def search(
-        db: Session,
-        keyword: str,
-    ) -> List[MediaRoll]:
-
-        keyword = f"%{keyword}%"
-
-        return (
-            db.query(MediaRoll)
-            .filter(
-                MediaRoll.roll_number.ilike(keyword)
-                |
-                MediaRoll.batch_number.ilike(keyword)
-                |
-                MediaRoll.qr_payload.ilike(keyword)
-            )
-            .order_by(
-                MediaRoll.created_at.desc()
-            )
-            .all()
-        )
-
-    # ---------------------------------------------------------
-    # BY STATUS
-    # ---------------------------------------------------------
-
-    @staticmethod
-    def by_status(
-        db: Session,
-        status: str,
-    ) -> List[MediaRoll]:
-
-        return (
-            db.query(MediaRoll)
-            .filter(
-                MediaRoll.status == status
-            )
-            .order_by(
-                MediaRoll.created_at.desc()
-            )
-            .all()
-        )
-
-    # ---------------------------------------------------------
-    # BY WAREHOUSE
-    # ---------------------------------------------------------
-
-    @staticmethod
-    def by_warehouse(
-        db: Session,
-        warehouse_id: int,
-    ) -> List[MediaRoll]:
-
-        return (
-            db.query(MediaRoll)
-            .filter(
-                MediaRoll.warehouse_id == warehouse_id
-            )
-            .order_by(
-                MediaRoll.created_at.desc()
-            )
-            .all()
-        )
-
-    # ---------------------------------------------------------
-    # AVAILABLE
-    # ---------------------------------------------------------
-
-    @staticmethod
-    def available(
-        db: Session,
-    ) -> List[MediaRoll]:
-
-        return (
-            db.query(MediaRoll)
-            .filter(
-                MediaRoll.status == "AVAILABLE",
-                MediaRoll.is_active.is_(True),
-            )
-            .order_by(
-                MediaRoll.created_at.desc()
-            )
-            .all()
-        )
-
-    # ---------------------------------------------------------
-    # COUNT
-    # ---------------------------------------------------------
-
-    @staticmethod
-    def count(
-        db: Session,
-    ) -> int:
-
-        return (
-            db.query(
-                func.count(MediaRoll.id)
-            )
-            .scalar()
-            or 0
-        )
-
-    # ---------------------------------------------------------
-    # SUMMARY
-    # ---------------------------------------------------------
-
-    @staticmethod
-    def summary(
-        db: Session,
     ):
 
-        total = (
-            db.query(
-                func.count(MediaRoll.id)
+        return (
+            db.query(MediaRoll)
+            .filter(
+                MediaRoll.roll_number == roll_number
             )
-            .scalar()
-            or 0
+            .first()
         )
 
-        available = (
-            db.query(
-                func.count(MediaRoll.id)
-            )
+    @classmethod
+    def get_by_asset_id(
+        cls,
+        db,
+        asset_id: str,
+    ):
+
+        return (
+            db.query(MediaRoll)
             .filter(
-                MediaRoll.status == "AVAILABLE"
+                MediaRoll.asset_id == asset_id
             )
-            .scalar()
-            or 0
+            .first()
         )
 
-        allocated = (
-            db.query(
-                func.count(MediaRoll.id)
-            )
+    @classmethod
+    def get_by_qr_payload(
+        cls,
+        db,
+        payload: str,
+    ):
+
+        return (
+            db.query(MediaRoll)
             .filter(
-                MediaRoll.status == "ALLOCATED"
+                MediaRoll.qr_payload == payload
             )
-            .scalar()
-            or 0
+            .first()
         )
 
-        consumed = (
-            db.query(
-                func.count(MediaRoll.id)
-            )
-            .filter(
-                MediaRoll.status == "CONSUMED"
-            )
-            .scalar()
-            or 0
+    @classmethod
+    def available(
+        cls,
+        db,
+    ):
+
+        from constants.status import MediaRollStatus
+
+        return cls.search(
+            db,
+            MediaRoll.status == MediaRollStatus.AVAILABLE,
+            MediaRoll.is_active.is_(True),
         )
+
+    @classmethod
+    def by_warehouse(
+        cls,
+        db,
+        warehouse_id: int,
+    ):
+
+        return cls.search(
+            db,
+            MediaRoll.warehouse_id == warehouse_id,
+            MediaRoll.is_active.is_(True),
+        )
+
+    @classmethod
+    def by_supplier(
+        cls,
+        db,
+        supplier_id: int,
+    ):
+
+        return cls.search(
+            db,
+            MediaRoll.supplier_id == supplier_id,
+            MediaRoll.is_active.is_(True),
+        )
+
+    @classmethod
+    def by_manufacturer(
+        cls,
+        db,
+        manufacturer_id: int,
+    ):
+
+        return cls.search(
+            db,
+            MediaRoll.manufacturer_id == manufacturer_id,
+            MediaRoll.is_active.is_(True),
+        )
+
+    @classmethod
+    def dashboard_summary(
+        cls,
+        db,
+    ):
+
+        from constants.status import MediaRollStatus
+
+        rolls = cls.list(db)
 
         return {
 
-            "total": total,
+            "total": len(rolls),
 
-            "available": available,
+            "available": len(
+                [
+                    r
+                    for r in rolls
+                    if r.status == MediaRollStatus.AVAILABLE
+                ]
+            ),
 
-            "allocated": allocated,
+            "allocated": len(
+                [
+                    r
+                    for r in rolls
+                    if r.status == MediaRollStatus.ALLOCATED
+                ]
+            ),
 
-            "consumed": consumed,
+            "printing": len(
+                [
+                    r
+                    for r in rolls
+                    if r.status == MediaRollStatus.PRINTING
+                ]
+            ),
+
+            "printed": len(
+                [
+                    r
+                    for r in rolls
+                    if r.status == MediaRollStatus.PRINTED
+                ]
+            ),
+
+            "consumed": len(
+                [
+                    r
+                    for r in rolls
+                    if r.status == MediaRollStatus.CONSUMED
+                ]
+            ),
 
         }
