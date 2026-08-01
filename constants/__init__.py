@@ -5,3 +5,5 @@ from .status import *
 
 from .production_batch_status import *
 from .production_item_status import *
+
+from .document_types import *
