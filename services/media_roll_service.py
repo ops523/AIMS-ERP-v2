@@ -157,7 +157,7 @@ class MediaRollService:
                     media_roll.roll_number = (
                         DocumentNumberService.generate(
                             db,
-                            DocumentType.MEDIA_ROLL,
+                            "MEDIA_ROLL",
                         )
                     )
 
