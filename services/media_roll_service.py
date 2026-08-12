@@ -4,7 +4,6 @@ import uuid
 
 from sqlalchemy.orm import Session
 
-from constants.document_types import DocumentType
 from constants.modules import Module
 from constants.status import MediaRollStatus
 
