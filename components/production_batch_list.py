@@ -16,7 +16,7 @@ class ProductionBatchList:
 
         try:
 
-            batches = ProductionBatchRepository.get_all(db)
+            batches = ProductionBatchRepository.list(db)
 
             st.subheader("Production Batches")
 
