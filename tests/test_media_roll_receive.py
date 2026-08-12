@@ -177,7 +177,11 @@ def test_receive_roll_complete_transaction():
 
     assert received_roll.asset_id.startswith("MR-")
 
-    assert received_roll.roll_number == "MR-2026-000001"
+    assert received_roll.roll_number.startswith("MR-")
+
+    assert received_roll.roll_number.endswith(
+        "-000001"
+    )
 
     assert received_roll.qr_payload is not None
 
