@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 
 from sqlalchemy.orm import Session
 
@@ -111,3 +112,42 @@ class QRService:
         )
 
         return media_roll
+
+    # =========================================================
+    # QR ARTIFACT CLEANUP
+    # =========================================================
+
+    @classmethod
+    def delete_qr_artifact(
+        cls,
+        media_roll,
+    ) -> None:
+        """
+        Delete the physical QR image associated with a Media Roll.
+
+        Database rollback is handled by TransactionService. This method
+        only removes the filesystem artifact created by QR generation.
+        Cleanup failures are deliberately swallowed so they never hide
+        the original business transaction error.
+        """
+
+        if media_roll is None:
+            return
+
+        qr_image_path = getattr(
+            media_roll,
+            "qr_image_path",
+            None,
+        )
+
+        if not qr_image_path:
+            return
+
+        try:
+            path = Path(qr_image_path)
+
+            if path.exists():
+                path.unlink()
+
+        except OSError:
+            pass
