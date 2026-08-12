@@ -193,11 +193,16 @@ class MediaRollService:
                 # QR
                 # -------------------------------------------------
 
-                qr_file_path = QRService.generate_media_roll_qr(
+                QRService.generate_media_roll_qr(
                     db=db,
                     media_roll=media_roll,
                     user=user,
                 )
+
+                # QR generation creates a physical file outside the
+                # database transaction. Track its path so it can be
+                # removed if the business transaction later fails.
+                qr_file_path = media_roll.qr_image_path
 
                 # -------------------------------------------------
                 # Inventory Receipt
@@ -258,14 +263,7 @@ class MediaRollService:
         except Exception as exc:
 
             if qr_file_path:
-                try:
-                    qr_path = Path(qr_file_path)
-
-                    if qr_path.exists():
-                        qr_path.unlink()
-
-                except Exception:
-                    pass
+                QRService.delete_qr_artifact(media_roll)
 
             return ServiceResult.fail(
                 "Unable to receive Media Roll.",
