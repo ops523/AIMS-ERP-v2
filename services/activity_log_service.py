@@ -11,23 +11,26 @@ class ActivityLogService:
         module: str,
         reference: str,
         activity: str,
-        performed_by: str,
+        performed_by: str | None = None,
     ):
 
-        db.add(
+        log = ActivityLog(
 
-            ActivityLog(
+            module=module,
 
-                module=module,
+            reference=reference,
 
-                reference=reference,
+            activity=activity,
 
-                activity=activity,
-
-                performed_by=performed_by,
-
-            )
-
+            performed_by=(
+                performed_by
+                if performed_by
+                else "SYSTEM"
+            ),
         )
 
-        db.commit()
+        db.add(log)
+
+        db.flush()
+
+        return log
