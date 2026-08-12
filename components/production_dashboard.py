@@ -18,7 +18,7 @@ class ProductionDashboard:
 
         db = get_session()
 
-        batches = ProductionBatchRepository.get_all(db)
+        batches = ProductionBatchRepository.list(db)
 
         printers = PrinterRepository.get_all(db)
 
