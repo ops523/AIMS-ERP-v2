@@ -1,16 +1,17 @@
+from __future__ import annotations
+
 from datetime import datetime
 
 from sqlalchemy.orm import Session
 
 from components.qr_label_generator import QRLabelGenerator
-
 from core.storage_manager import StorageManager
+
+from constants.qr_events import QR_CREATED
 
 from repositories.media_roll_history_repository import (
     MediaRollHistoryRepository,
 )
-
-from services.activity_logger import ActivityLogger
 
 
 class QRService:
@@ -23,83 +24,90 @@ class QRService:
 
     DISPATCH = "DS"
 
+    # =========================================================
+    # PAYLOAD
+    # =========================================================
+
     @classmethod
     def generate_payload(
         cls,
         entity: str,
         uuid: str,
-    ):
+    ) -> str:
 
-        return f"{cls.COMPANY_PREFIX}|{entity}|{uuid}"
+        return (
+            f"{cls.COMPANY_PREFIX}|"
+            f"{entity}|"
+            f"{uuid}"
+        )
+
+    # =========================================================
+    # MEDIA ROLL QR
+    # =========================================================
 
     @classmethod
     def generate_media_roll_qr(
         cls,
         db: Session,
         media_roll,
-        user: str,
+        user: str | None = None,
     ):
 
+        if not media_roll.uuid:
+
+            raise ValueError(
+                "Media Roll UUID is required "
+                "before QR generation."
+            )
+
+        if not media_roll.roll_number:
+
+            raise ValueError(
+                "Roll Number is required "
+                "before QR generation."
+            )
+
         payload = cls.generate_payload(
-
             cls.MEDIA_ROLL,
-
             str(media_roll.uuid),
-
         )
 
         qr_path = StorageManager.qr_path(
-
             "media_rolls",
-
             media_roll.roll_number,
-
         )
 
         QRLabelGenerator.generate(
-
             payload,
-
             qr_path,
+        )
 
+        media_roll.qr_code = (
+            media_roll.roll_number
         )
 
         media_roll.qr_payload = payload
 
-        media_roll.qr_image_path = str(qr_path)
-
-        media_roll.qr_generated_on = datetime.now()
-
-        db.commit()
-
-        db.refresh(media_roll)
-
-        MediaRollHistoryRepository.add_event(
-
-            db=db,
-
-            media_roll_id=media_roll.id,
-
-            event="QR_GENERATED",
-
-            remarks="QR Generated",
-
-            performed_by=user,
-
+        media_roll.qr_image_path = str(
+            qr_path
         )
 
-        ActivityLogger.log(
+        media_roll.qr_generated_on = (
+            datetime.utcnow()
+        )
 
+        db.flush()
+
+        MediaRollHistoryRepository.add_event(
             db=db,
-
-            module="QR",
-
-            reference=media_roll.roll_number,
-
-            activity="QR Generated",
-
-            performed_by=user,
-
+            media_roll_id=media_roll.id,
+            event=QR_CREATED,
+            previous_status=media_roll.status,
+            current_status=media_roll.status,
+            reference_type="MEDIA_ROLL",
+            reference_number=media_roll.roll_number,
+            remarks="QR generated",
+            scanned_by=user,
         )
 
         return media_roll
