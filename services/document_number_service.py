@@ -4,13 +4,10 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from models.document_sequence import (
-    DocumentSequence,
-)
+from models.document_sequence import DocumentSequence
 
 
 class DocumentNumberService:
-
     """
     Central document numbering engine.
 
@@ -21,7 +18,6 @@ class DocumentNumberService:
         DS-2026-000010
 
     IMPORTANT:
-
     This service NEVER commits.
 
     The caller owns the transaction.
@@ -39,23 +35,20 @@ class DocumentNumberService:
                 DocumentSequence.document_type
                 == document_type
             )
-            .with_for_update()
             .first()
         )
 
         if sequence is None:
-
             raise ValueError(
-                (
-                    "No document sequence found for "
-                    f"{document_type}"
-                )
+                f"No document sequence found for {document_type}"
             )
 
         year = datetime.now().year
 
         sequence.last_number += 1
 
+        # Make the new sequence value visible
+        # to the current transaction without committing.
         db.flush()
 
         return (
