@@ -1,6 +1,6 @@
-import uuid
-
 from __future__ import annotations
+
+import uuid
 
 from sqlalchemy.orm import Session
 
