@@ -4,18 +4,27 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from models.document_sequence import DocumentSequence
+from models.document_sequence import (
+    DocumentSequence,
+)
 
 
 class DocumentNumberService:
 
     """
-    Central Document Number Engine.
+    Central document numbering engine.
 
     Examples:
+
         PB-2026-000001
-        MR-2026-000001
-        DS-2026-000001
+        MR-2026-000154
+        DS-2026-000010
+
+    IMPORTANT:
+
+    This service NEVER commits.
+
+    The caller owns the transaction.
     """
 
     @staticmethod
@@ -37,8 +46,10 @@ class DocumentNumberService:
         if sequence is None:
 
             raise ValueError(
-                f"Document Sequence not found: "
-                f"{document_type}"
+                (
+                    "No document sequence found for "
+                    f"{document_type}"
+                )
             )
 
         year = datetime.now().year
