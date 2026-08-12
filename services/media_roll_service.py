@@ -1,3 +1,5 @@
+import uuid
+
 from __future__ import annotations
 
 from sqlalchemy.orm import Session
@@ -5,9 +7,6 @@ from sqlalchemy.orm import Session
 from constants.document_types import DocumentType
 from constants.modules import Module
 from constants.status import MediaRollStatus
-from constants.inventory import (
-    InventoryTransactionType,
-)
 
 from models.media_roll import MediaRoll
 
@@ -135,6 +134,12 @@ class MediaRollService:
                 # Asset ID
                 # -------------------------------------------------
 
+                if not media_roll.uuid:
+
+                    media_roll.uuid = str(
+                        uuid.uuid4()
+                    )
+
                 if not media_roll.asset_id:
 
                     media_roll.asset_id = (
@@ -142,7 +147,7 @@ class MediaRollService:
                             media_roll
                         )
                     )
-
+                    
                 # -------------------------------------------------
                 # Roll Number
                 # -------------------------------------------------
@@ -549,15 +554,11 @@ class MediaRollService:
                         )
                     )
 
-                InventoryTransactionService.post_transaction(
+                InventoryTransactionService.consume_roll(
                     db=db,
                     media_roll_id=media_roll.id,
-                    transaction_type=(
-                        InventoryTransactionType.CONSUMPTION
-                    ),
-                    reference_module=Module.MEDIA_ROLL,
                     warehouse_id=media_roll.warehouse_id,
-                    qty_out=qty_sqft,
+                    qty=qty_sqft,
                     remarks=(
                         reason
                         or "Media Roll consumption"
