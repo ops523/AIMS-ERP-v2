@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from pathlib import Path
 
 from sqlalchemy.orm import Session
 
@@ -125,6 +126,8 @@ class MediaRollService:
 
             return validation
 
+        qr_file_path = None
+        
         try:
 
             with TransactionService.transaction(db):
@@ -190,7 +193,7 @@ class MediaRollService:
                 # QR
                 # -------------------------------------------------
 
-                QRService.generate_media_roll_qr(
+                qr_file_path = QRService.generate_media_roll_qr(
                     db=db,
                     media_roll=media_roll,
                     user=user,
@@ -253,6 +256,16 @@ class MediaRollService:
                 )
 
         except Exception as exc:
+
+            if qr_file_path:
+                try:
+                    qr_path = Path(qr_file_path)
+
+                    if qr_path.exists():
+                        qr_path.unlink()
+
+                except Exception:
+                    pass
 
             return ServiceResult.fail(
                 "Unable to receive Media Roll.",
