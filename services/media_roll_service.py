@@ -9,6 +9,7 @@ from constants.modules import Module
 from constants.status import MediaRollStatus
 
 from models.media_roll import MediaRoll
+from models.media_product import MediaProduct
 
 from repositories.media_roll_repository import (
     MediaRollRepository,
@@ -167,28 +168,28 @@ class MediaRollService:
 
 
         # -----------------------------------------------------
-        # MANUFACTURER ↔ PRODUCT
+        # MANUFACTURER ↔ PRODUCT VALIDATION
         # -----------------------------------------------------
 
-        product = getattr(
-            media_roll,
-            "product",
-            None,
-        )
+        if media_roll.product_id:
 
-
-        if product is not None:
-
-            product_manufacturer_id = getattr(
-                product,
-                "manufacturer_id",
-                None,
+            product = (
+                db.query(MediaProduct)
+                .filter(
+                    MediaProduct.id
+                    == media_roll.product_id
+                )
+                .first()
             )
 
+            if product is None:
 
-            if (
-                product_manufacturer_id
-                and product_manufacturer_id
+                errors.append(
+                    "Selected Media Product was not found."
+                )
+
+            elif (
+                product.manufacturer_id
                 != media_roll.manufacturer_id
             ):
 
