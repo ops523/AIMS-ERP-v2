@@ -105,6 +105,117 @@ class MediaRollService:
     }
 
     # =========================================================
+    # RECEIVE VALIDATION
+    # =========================================================
+
+    @classmethod
+    def _validate_receive(
+        cls,
+        db: Session,
+        media_roll: MediaRoll,
+    ) -> ServiceResult:
+
+        # -----------------------------------------------------
+        # Object validation
+        # -----------------------------------------------------
+
+        validation = (
+            MediaRollValidator.validate_create(
+                media_roll
+            )
+        )
+
+        if not validation.success:
+
+            return validation
+
+
+        errors = []
+
+
+        # -----------------------------------------------------
+        # DUPLICATE MANUFACTURER ROLL NUMBER
+        # -----------------------------------------------------
+
+        manufacturer_roll_no = (
+            media_roll.manufacturer_roll_no
+        )
+
+
+        if manufacturer_roll_no:
+
+            existing_roll = (
+                MediaRollRepository
+                .get_by_manufacturer_roll_no(
+                    db=db,
+                    manufacturer_roll_no=(
+                        manufacturer_roll_no
+                    ),
+                )
+            )
+
+
+            if existing_roll:
+
+                errors.append(
+                    (
+                        "Manufacturer Roll Number "
+                        f"'{manufacturer_roll_no}' "
+                        "has already been received."
+                    )
+                )
+
+
+        # -----------------------------------------------------
+        # MANUFACTURER ↔ PRODUCT
+        # -----------------------------------------------------
+
+        product = getattr(
+            media_roll,
+            "product",
+            None,
+        )
+
+
+        if product is not None:
+
+            product_manufacturer_id = getattr(
+                product,
+                "manufacturer_id",
+                None,
+            )
+
+
+            if (
+                product_manufacturer_id
+                and product_manufacturer_id
+                != media_roll.manufacturer_id
+            ):
+
+                errors.append(
+                    (
+                        "Selected Manufacturer does not "
+                        "match the Manufacturer assigned "
+                        "to the selected Media Product."
+                    )
+                )
+
+
+        # -----------------------------------------------------
+        # RESULT
+        # -----------------------------------------------------
+
+        if errors:
+
+            return ServiceResult.fail(
+                "Media Roll receive validation failed.",
+                errors,
+            )
+
+
+        return ServiceResult.ok()
+    
+    # =========================================================
     # CREATE / RECEIVE
     # =========================================================
 
@@ -117,13 +228,13 @@ class MediaRollService:
     ) -> ServiceResult:
 
         validation = (
-            MediaRollValidator.validate_create(
-                media_roll
+            cls._validate_receive(
+                db=db,
+                media_roll=media_roll,
             )
         )
 
         if not validation.success:
-
             return validation
 
         qr_file_path = None
