@@ -391,8 +391,9 @@ st.subheader("Receipt Preview")
 
 preview_rows = []
 
-for index, row in roll_data.iterrows():
-
+for index, row in enumerate(roll_data):
+    roll_position = index + 1
+    
     try:
 
         actual_length = float(
@@ -543,10 +544,9 @@ if receive_clicked:
     # Roll validation
     # -----------------------------------------------------
 
-    for index, row in roll_data.iterrows():
-
-        roll_number_display = index + 1
-
+    for index, row in enumerate(roll_data):
+        roll_position = index + 1
+        
         manufacturer_roll_no = str(
             row["Manufacturer Roll No."]
         ).strip()
@@ -701,10 +701,9 @@ if receive_clicked:
     )
 
 
-    for index, row in roll_data.iterrows():
-
+    for index, row in enumerate(roll_data):
         roll_position = index + 1
-
+        
         status_text.info(
             (
                 f"Receiving roll "
