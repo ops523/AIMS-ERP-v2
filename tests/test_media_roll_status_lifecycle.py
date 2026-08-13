@@ -6,7 +6,9 @@ import models
 from database import Base
 
 from constants.status import MediaRollStatus
+
 from models.media_roll import MediaRoll
+from models.inventory_transaction import InventoryTransaction
 
 from services.media_roll_service import MediaRollService
 
@@ -86,6 +88,54 @@ def create_roll(
     db.refresh(roll)
 
     return roll
+
+
+# =========================================================
+# INVENTORY RECEIPT FACTORY
+# =========================================================
+
+def create_inventory_receipt(
+    db,
+    roll,
+    qty_sqft,
+):
+
+    receipt = InventoryTransaction(
+
+        media_roll_id=roll.id,
+
+        transaction_type="RECEIPT",
+
+        reference_module="MEDIA_ROLL",
+
+        reference_id=roll.id,
+
+        warehouse_id=roll.warehouse_id,
+
+        unit_cost=0,
+
+        total_cost=0,
+
+        wastage_sqft=0,
+
+        qty_in=qty_sqft,
+
+        qty_out=0,
+
+        balance_qty=qty_sqft,
+
+        remarks="Lifecycle test inventory receipt",
+
+        performed_by="TEST_USER",
+    )
+
+    db.add(receipt)
+
+    db.commit()
+
+    db.refresh(receipt)
+
+    return receipt
 
 
 # =========================================================
@@ -347,7 +397,6 @@ def test_status_change_creates_history_and_activity():
         == MediaRollStatus.RESERVED
     )
 
-    # Reload from database.
     db.refresh(roll)
 
     assert (
@@ -431,6 +480,14 @@ def test_printed_roll_can_be_partially_consumed():
         available_sqft=200.0,
     )
 
+    # The roll must have inventory ledger balance
+    # before consumption can occur.
+    create_inventory_receipt(
+        db=db,
+        roll=roll,
+        qty_sqft=200.0,
+    )
+
     result = MediaRollService.consume(
         db=db,
         media_roll_id=roll.id,
@@ -449,7 +506,7 @@ def test_printed_roll_can_be_partially_consumed():
 
     assert (
         roll.status
-        == MediaRollStatus.PRINTED
+        == MediaRollStatus.PARTIALLY_USED
     )
 
     db.close()
@@ -464,6 +521,12 @@ def test_printed_roll_can_be_fully_consumed():
         status=MediaRollStatus.PRINTED,
         total_sqft=200.0,
         available_sqft=200.0,
+    )
+
+    create_inventory_receipt(
+        db=db,
+        roll=roll,
+        qty_sqft=200.0,
     )
 
     result = MediaRollService.consume(
@@ -499,6 +562,12 @@ def test_consuming_more_than_available_is_rejected():
         status=MediaRollStatus.PRINTED,
         total_sqft=200.0,
         available_sqft=200.0,
+    )
+
+    create_inventory_receipt(
+        db=db,
+        roll=roll,
+        qty_sqft=200.0,
     )
 
     result = MediaRollService.consume(
