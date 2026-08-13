@@ -75,7 +75,6 @@ class InventoryTransactionService:
         )
 
         if new_balance < 0:
-
             raise ValueError(
                 (
                     "Insufficient inventory. "
@@ -147,13 +146,19 @@ class InventoryTransactionService:
             InventoryTransactionService.post_transaction(
                 db=db,
                 media_roll_id=media_roll_id,
+
                 transaction_type=(
                     InventoryTransactionType.RECEIPT
                 ),
+
                 reference_module=Module.MEDIA_ROLL,
+
                 warehouse_id=warehouse_id,
+
                 qty_in=qty,
+
                 remarks=remarks,
+
                 user=user,
             )
         )
@@ -186,18 +191,29 @@ class InventoryTransactionService:
             InventoryTransactionService.post_transaction(
                 db=db,
                 media_roll_id=media_roll_id,
+
                 transaction_type=(
                     InventoryTransactionType.CONSUMPTION
                 ),
+
                 reference_module=Module.PRODUCTION,
+
                 campaign_id=campaign_id,
+
                 printer_id=printer_id,
+
                 warehouse_id=warehouse_id,
+
                 qty_out=qty,
+
                 wastage_sqft=wastage,
+
                 unit_cost=unit_cost,
+
                 total_cost=total_cost,
+
                 remarks=remarks,
+
                 user=user,
             )
         )
@@ -227,13 +243,19 @@ class InventoryTransactionService:
                 InventoryTransactionService.post_transaction(
                     db=db,
                     media_roll_id=media_roll_id,
+
                     transaction_type=(
                         InventoryTransactionType.ADJUSTMENT
                     ),
+
                     reference_module=Module.INVENTORY,
+
                     warehouse_id=warehouse_id,
+
                     qty_in=qty,
+
                     remarks=remarks,
+
                     user=user,
                 )
             )
@@ -242,13 +264,19 @@ class InventoryTransactionService:
             InventoryTransactionService.post_transaction(
                 db=db,
                 media_roll_id=media_roll_id,
+
                 transaction_type=(
                     InventoryTransactionType.ADJUSTMENT
                 ),
+
                 reference_module=Module.INVENTORY,
+
                 warehouse_id=warehouse_id,
+
                 qty_out=abs(qty),
+
                 remarks=remarks,
+
                 user=user,
             )
         )
@@ -277,6 +305,7 @@ class InventoryTransactionService:
             from_warehouse_id
             == to_warehouse_id
         ):
+
             raise ValueError(
                 "Source and destination warehouse "
                 "cannot be the same."
