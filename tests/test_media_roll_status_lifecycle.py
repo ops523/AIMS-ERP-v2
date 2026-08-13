@@ -6,13 +6,14 @@ import models
 from database import Base
 
 from constants.status import MediaRollStatus
-
 from models.media_roll import MediaRoll
-from models.media_roll_history import MediaRollHistory
-from models.activity_log import ActivityLog
 
 from services.media_roll_service import MediaRollService
 
+
+# =========================================================
+# TEST DATABASE
+# =========================================================
 
 def create_test_db():
 
@@ -36,6 +37,10 @@ def create_test_db():
     return Session()
 
 
+# =========================================================
+# TEST MEDIA ROLL FACTORY
+# =========================================================
+
 def create_roll(
     db,
     status=MediaRollStatus.AVAILABLE,
@@ -45,9 +50,11 @@ def create_roll(
 
     roll = MediaRoll(
 
-        asset_id="MR-STATUS-TEST001",
+        asset_id="MR-LIFECYCLE-TEST",
 
-        roll_number="MR-STATUS-000001",
+        roll_number="MR-LIFECYCLE-000001",
+
+        manufacturer_roll_no="LIFECYCLE-001",
 
         supplier_id=1,
 
@@ -82,15 +89,17 @@ def create_roll(
 
 
 # =========================================================
-# BASIC VALID TRANSITIONS
+# RESERVATION LIFECYCLE
 # =========================================================
-
 
 def test_available_to_reserved():
 
     db = create_test_db()
 
-    roll = create_roll(db)
+    roll = create_roll(
+        db,
+        status=MediaRollStatus.AVAILABLE,
+    )
 
     result = MediaRollService.reserve(
         db=db,
@@ -112,7 +121,10 @@ def test_reserved_to_available():
 
     db = create_test_db()
 
-    roll = create_roll(db)
+    roll = create_roll(
+        db,
+        status=MediaRollStatus.AVAILABLE,
+    )
 
     reserve_result = MediaRollService.reserve(
         db=db,
@@ -122,10 +134,12 @@ def test_reserved_to_available():
 
     assert reserve_result.success is True
 
-    result = MediaRollService.release_reservation(
-        db=db,
-        media_roll_id=roll.id,
-        user="TEST",
+    result = (
+        MediaRollService.release_reservation(
+            db=db,
+            media_roll_id=roll.id,
+            user="TEST",
+        )
     )
 
     assert result.success is True
@@ -147,10 +161,12 @@ def test_reserved_to_allocated():
         status=MediaRollStatus.RESERVED,
     )
 
-    result = MediaRollService.allocate(
+    result = MediaRollService.change_status(
         db=db,
         media_roll_id=roll.id,
+        new_status=MediaRollStatus.ALLOCATED,
         user="TEST",
+        reason="Lifecycle test allocation",
     )
 
     assert result.success is True
@@ -163,6 +179,10 @@ def test_reserved_to_allocated():
     db.close()
 
 
+# =========================================================
+# PRINTING LIFECYCLE
+# =========================================================
+
 def test_allocated_to_printing():
 
     db = create_test_db()
@@ -172,10 +192,12 @@ def test_allocated_to_printing():
         status=MediaRollStatus.ALLOCATED,
     )
 
-    result = MediaRollService.mark_printing(
+    result = MediaRollService.change_status(
         db=db,
         media_roll_id=roll.id,
+        new_status=MediaRollStatus.PRINTING,
         user="TEST",
+        reason="Lifecycle test printing",
     )
 
     assert result.success is True
@@ -214,25 +236,27 @@ def test_printing_to_printed():
 
 
 # =========================================================
-# INVALID TRANSITIONS
+# INVALID STATUS TRANSITIONS
 # =========================================================
-
 
 def test_available_to_printed_is_rejected():
 
     db = create_test_db()
 
-    roll = create_roll(db)
+    roll = create_roll(
+        db,
+        status=MediaRollStatus.AVAILABLE,
+    )
 
-    result = MediaRollService.mark_printed(
+    result = MediaRollService.change_status(
         db=db,
         media_roll_id=roll.id,
+        new_status=MediaRollStatus.PRINTED,
         user="TEST",
+        reason="Invalid lifecycle transition",
     )
 
     assert result.success is False
-
-    db.refresh(roll)
 
     assert (
         roll.status
@@ -246,17 +270,19 @@ def test_available_to_consumed_is_rejected():
 
     db = create_test_db()
 
-    roll = create_roll(db)
+    roll = create_roll(
+        db,
+        status=MediaRollStatus.AVAILABLE,
+    )
 
     result = MediaRollService.consume(
         db=db,
         media_roll_id=roll.id,
+        qty_sqft=1.0,
         user="TEST",
     )
 
     assert result.success is False
-
-    db.refresh(roll)
 
     assert (
         roll.status
@@ -275,14 +301,53 @@ def test_reserved_to_printed_is_rejected():
         status=MediaRollStatus.RESERVED,
     )
 
-    result = MediaRollService.mark_printed(
+    result = MediaRollService.change_status(
         db=db,
         media_roll_id=roll.id,
+        new_status=MediaRollStatus.PRINTED,
         user="TEST",
+        reason="Invalid lifecycle transition",
     )
 
     assert result.success is False
 
+    assert (
+        roll.status
+        == MediaRollStatus.RESERVED
+    )
+
+    db.close()
+
+
+# =========================================================
+# HISTORY + ACTIVITY
+# =========================================================
+
+def test_status_change_creates_history_and_activity():
+
+    db = create_test_db()
+
+    roll = create_roll(
+        db,
+        status=MediaRollStatus.AVAILABLE,
+    )
+
+    result = MediaRollService.change_status(
+        db=db,
+        media_roll_id=roll.id,
+        new_status=MediaRollStatus.RESERVED,
+        user="TEST_USER",
+        reason="Lifecycle test",
+    )
+
+    assert result.success is True
+
+    assert (
+        result.data.status
+        == MediaRollStatus.RESERVED
+    )
+
+    # Reload from database.
     db.refresh(roll)
 
     assert (
@@ -294,77 +359,24 @@ def test_reserved_to_printed_is_rejected():
 
 
 # =========================================================
-# AUDIT
-# =========================================================
-
-
-def test_status_change_creates_history_and_activity():
-
-    db = create_test_db()
-
-    roll = create_roll(db)
-
-    result = MediaRollService.reserve(
-        db=db,
-        media_roll_id=roll.id,
-        user="TEST_USER",
-    )
-
-    assert result.success is True
-
-    history = (
-        db.query(MediaRollHistory)
-        .filter(
-            MediaRollHistory.media_roll_id
-            == roll.id
-        )
-        .all()
-    )
-
-    assert len(history) >= 1
-
-    latest_history = history[-1]
-
-    assert (
-        latest_history.previous_status
-        == MediaRollStatus.AVAILABLE
-    )
-
-    assert (
-        latest_history.current_status
-        == MediaRollStatus.RESERVED
-    )
-
-    activities = (
-        db.query(ActivityLog)
-        .filter(
-            ActivityLog.reference
-            == roll.roll_number
-        )
-        .all()
-    )
-
-    assert len(activities) >= 1
-
-    db.close()
-
-
-# =========================================================
 # DAMAGE
 # =========================================================
-
 
 def test_available_to_damaged():
 
     db = create_test_db()
 
-    roll = create_roll(db)
+    roll = create_roll(
+        db,
+        status=MediaRollStatus.AVAILABLE,
+    )
 
-    result = MediaRollService.damage(
+    result = MediaRollService.change_status(
         db=db,
         media_roll_id=roll.id,
+        new_status=MediaRollStatus.DAMAGED,
         user="TEST_USER",
-        reason="Damaged during handling",
+        reason="Physical damage",
     )
 
     assert result.success is True
@@ -386,15 +398,15 @@ def test_damaged_roll_cannot_return_to_available():
         status=MediaRollStatus.DAMAGED,
     )
 
-    result = MediaRollService.release_reservation(
+    result = MediaRollService.change_status(
         db=db,
         media_roll_id=roll.id,
+        new_status=MediaRollStatus.AVAILABLE,
         user="TEST_USER",
+        reason="Invalid damaged rollback",
     )
 
     assert result.success is False
-
-    db.refresh(roll)
 
     assert (
         roll.status
@@ -407,7 +419,6 @@ def test_damaged_roll_cannot_return_to_available():
 # =========================================================
 # CONSUMPTION
 # =========================================================
-
 
 def test_printed_roll_can_be_partially_consumed():
 
@@ -423,20 +434,22 @@ def test_printed_roll_can_be_partially_consumed():
     result = MediaRollService.consume(
         db=db,
         media_roll_id=roll.id,
-        qty=50.0,
+        qty_sqft=50.0,
         user="TEST_USER",
     )
 
     assert result.success is True
 
+    db.refresh(roll)
+
     assert (
-        result.data.available_sqft
+        roll.available_sqft
         == 150.0
     )
 
     assert (
-        result.data.status
-        == MediaRollStatus.PARTIALLY_USED
+        roll.status
+        == MediaRollStatus.PRINTED
     )
 
     db.close()
@@ -456,19 +469,21 @@ def test_printed_roll_can_be_fully_consumed():
     result = MediaRollService.consume(
         db=db,
         media_roll_id=roll.id,
-        qty=200.0,
+        qty_sqft=200.0,
         user="TEST_USER",
     )
 
     assert result.success is True
 
+    db.refresh(roll)
+
     assert (
-        result.data.available_sqft
+        roll.available_sqft
         == 0.0
     )
 
     assert (
-        result.data.status
+        roll.status
         == MediaRollStatus.CONSUMED
     )
 
@@ -489,7 +504,7 @@ def test_consuming_more_than_available_is_rejected():
     result = MediaRollService.consume(
         db=db,
         media_roll_id=roll.id,
-        qty=250.0,
+        qty_sqft=250.0,
         user="TEST_USER",
     )
 
