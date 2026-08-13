@@ -1,42 +1,72 @@
 import streamlit as st
-from sqlalchemy.orm import Session
 
-from repositories.media_roll_repository import MediaRollRepository
+from services.media_roll_service import MediaRollService
 
 
 class MediaRollSummaryCards:
 
     @staticmethod
-    def render(db: Session):
+    def render(db):
 
-        summary = MediaRollRepository.summary(db)
+        summary = MediaRollService.dashboard(db)
 
-        col1, col2, col3, col4 = st.columns(4)
+        st.subheader("Media Roll Inventory")
 
-        with col1:
+        # -------------------------------------------------
+        # ROLL COUNTS
+        # -------------------------------------------------
 
-            st.metric(
-                label="Total Rolls",
-                value=summary["total"],
-            )
+        cols = st.columns(5)
 
-        with col2:
+        cards = [
+            ("Total Rolls", summary.get("total", 0)),
+            ("Available", summary.get("available", 0)),
+            ("Reserved", summary.get("reserved", 0)),
+            ("Allocated", summary.get("allocated", 0)),
+            ("Printing", summary.get("printing", 0)),
+        ]
 
-            st.metric(
-                label="Available",
-                value=summary["available"],
-            )
+        for column, (label, value) in zip(
+            cols,
+            cards,
+        ):
 
-        with col3:
+            with column:
 
-            st.metric(
-                label="Allocated",
-                value=summary["allocated"],
-            )
+                st.metric(
+                    label=label,
+                    value=value,
+                )
 
-        with col4:
+        cols = st.columns(5)
 
-            st.metric(
-                label="Consumed",
-                value=summary["consumed"],
+        cards = [
+            ("Printed", summary.get("printed", 0)),
+            (
+                "Partially Used",
+                summary.get("partially_used", 0),
+            ),
+            ("Consumed", summary.get("consumed", 0)),
+            ("Returned", summary.get("returned", 0)),
+            ("Damaged", summary.get("damaged", 0)),
+        ]
+
+        for column, (label, value) in zip(
+            cols,
+            cards,
+        ):
+
+            with column:
+
+                st.metric(
+                    label=label,
+                    value=value,
+                )
+
+        lost = summary.get("lost", 0)
+
+        if lost:
+
+            st.warning(
+                f"{lost} media roll(s) currently marked LOST."
             )
