@@ -4,7 +4,13 @@ import streamlit as st
 
 from core.startup import startup
 
+
+# =========================================================
+# APPLICATION STARTUP
+# =========================================================
+
 startup()
+
 
 from database import get_session
 
@@ -43,16 +49,26 @@ db = get_session()
 try:
 
     suppliers = SupplierRepository.get_all(db)
+
     manufacturers = ManufacturerRepository.get_all(db)
+
     warehouses = WarehouseRepository.get_all(db)
+
     products = MediaProductRepository.get_all(db)
 
 except Exception as exc:
 
-    st.error("Unable to load master data.")
+    st.error(
+        "Unable to load master data."
+    )
+
+    # Keep technical information available for
+    # development/debugging, but do not let the
+    # application continue with an invalid session.
     st.exception(exc)
 
     db.close()
+
     st.stop()
 
 
@@ -68,6 +84,7 @@ if not suppliers:
     )
 
     db.close()
+
     st.stop()
 
 
@@ -79,6 +96,7 @@ if not manufacturers:
     )
 
     db.close()
+
     st.stop()
 
 
@@ -90,6 +108,7 @@ if not warehouses:
     )
 
     db.close()
+
     st.stop()
 
 
@@ -101,6 +120,7 @@ if not products:
     )
 
     db.close()
+
     st.stop()
 
 
@@ -108,7 +128,9 @@ if not products:
 # RECEIPT INFORMATION
 # =========================================================
 
-st.subheader("Receipt Information")
+st.subheader(
+    "Receipt Information"
+)
 
 
 c1, c2 = st.columns(2)
@@ -207,7 +229,9 @@ with c8:
 
 st.divider()
 
-st.subheader("Selected Media Product")
+st.subheader(
+    "Selected Media Product"
+)
 
 
 pc1, pc2, pc3, pc4 = st.columns(4)
@@ -315,6 +339,7 @@ if default_width not in (4.0, 5.0):
 
 default_rows = []
 
+
 for _ in range(int(number_of_rolls)):
 
     default_rows.append(
@@ -333,7 +358,9 @@ for _ in range(int(number_of_rolls)):
 
 st.divider()
 
-st.subheader("Roll Details")
+st.subheader(
+    "Roll Details"
+)
 
 st.info(
     "Enter the physical details for each roll. "
@@ -354,30 +381,38 @@ roll_data = st.data_editor(
     use_container_width=True,
     hide_index=False,
     column_config={
-        "Manufacturer Roll No.": st.column_config.TextColumn(
-            "Manufacturer Roll No.",
-            help=(
-                "Physical roll number printed or supplied "
-                "by the manufacturer."
-            ),
-            required=False,
+        "Manufacturer Roll No.": (
+            st.column_config.TextColumn(
+                "Manufacturer Roll No.",
+                help=(
+                    "Physical roll number printed or supplied "
+                    "by the manufacturer."
+                ),
+                required=False,
+            )
         ),
-        "Ordered Length (m)": st.column_config.NumberColumn(
-            "Ordered Length (m)",
-            min_value=0.01,
-            step=0.1,
-            format="%.2f",
+        "Ordered Length (m)": (
+            st.column_config.NumberColumn(
+                "Ordered Length (m)",
+                min_value=0.01,
+                step=0.1,
+                format="%.2f",
+            )
         ),
-        "Actual Length (m)": st.column_config.NumberColumn(
-            "Actual Length (m)",
-            min_value=0.01,
-            step=0.1,
-            format="%.2f",
+        "Actual Length (m)": (
+            st.column_config.NumberColumn(
+                "Actual Length (m)",
+                min_value=0.01,
+                step=0.1,
+                format="%.2f",
+            )
         ),
-        "Width (ft)": st.column_config.SelectboxColumn(
-            "Width (ft)",
-            options=[4.0, 5.0],
-            required=True,
+        "Width (ft)": (
+            st.column_config.SelectboxColumn(
+                "Width (ft)",
+                options=[4.0, 5.0],
+                required=True,
+            )
         ),
     },
 )
@@ -387,10 +422,16 @@ roll_data = st.data_editor(
 # NORMALIZE DATA EDITOR RESULT
 # =========================================================
 #
-# Streamlit can return the edited data as a list of
-# dictionaries. We deliberately use enumerate() below
-# instead of .iterrows().
+# Streamlit can return the edited data as either:
 #
+# - a list of dictionaries
+# - a dataframe-like object
+#
+# Normalize both forms into:
+#
+# list[dict]
+#
+# This prevents the previous .iterrows() issue.
 # =========================================================
 
 if roll_data is None:
@@ -398,14 +439,19 @@ if roll_data is None:
     roll_data = []
 
 
-if hasattr(roll_data, "to_dict"):
+if hasattr(
+    roll_data,
+    "to_dict",
+):
 
     roll_data = roll_data.to_dict(
         orient="records"
     )
 
 
-roll_data = list(roll_data)
+roll_data = list(
+    roll_data
+)
 
 
 # =========================================================
@@ -414,13 +460,17 @@ roll_data = list(roll_data)
 
 st.divider()
 
-st.subheader("Receipt Preview")
+st.subheader(
+    "Receipt Preview"
+)
 
 
 preview_rows = []
 
 
-for index, row in enumerate(roll_data):
+for index, row in enumerate(
+    roll_data
+):
 
     try:
 
@@ -534,7 +584,9 @@ st.divider()
 
 remarks = st.text_area(
     "Remarks",
-    placeholder="Optional remarks about this receipt...",
+    placeholder=(
+        "Optional remarks about this receipt..."
+    ),
 )
 
 
@@ -558,9 +610,9 @@ if receive_clicked:
     validation_errors = []
 
 
-    # -----------------------------------------------------
-    # Header validation
-    # -----------------------------------------------------
+    # =====================================================
+    # HEADER VALIDATION
+    # =====================================================
 
     if supplier is None:
 
@@ -590,14 +642,20 @@ if receive_clicked:
         )
 
 
-    # -----------------------------------------------------
-    # Roll validation
-    # -----------------------------------------------------
+    # =====================================================
+    # ROLL VALIDATION
+    # =====================================================
 
-    for index, row in enumerate(roll_data):
+    for index, row in enumerate(
+        roll_data
+    ):
 
         roll_number_display = index + 1
 
+
+        # -------------------------------------------------
+        # Manufacturer Roll Number
+        # -------------------------------------------------
 
         manufacturer_roll_no = str(
             row.get(
@@ -616,6 +674,10 @@ if receive_clicked:
                 )
             )
 
+
+        # -------------------------------------------------
+        # Ordered Length
+        # -------------------------------------------------
 
         try:
 
@@ -641,6 +703,10 @@ if receive_clicked:
             )
 
 
+        # -------------------------------------------------
+        # Actual Length
+        # -------------------------------------------------
+
         try:
 
             actual_length = float(
@@ -664,6 +730,10 @@ if receive_clicked:
                 )
             )
 
+
+        # -------------------------------------------------
+        # Width
+        # -------------------------------------------------
 
         try:
 
@@ -689,6 +759,10 @@ if receive_clicked:
             )
 
 
+        # -------------------------------------------------
+        # Positive Length
+        # -------------------------------------------------
+
         if ordered_length <= 0:
 
             validation_errors.append(
@@ -709,7 +783,14 @@ if receive_clicked:
             )
 
 
-        if width_ft not in (4.0, 5.0):
+        # -------------------------------------------------
+        # Width
+        # -------------------------------------------------
+
+        if width_ft not in (
+            4.0,
+            5.0,
+        ):
 
             validation_errors.append(
                 (
@@ -719,9 +800,9 @@ if receive_clicked:
             )
 
 
-    # -----------------------------------------------------
-    # Stop on validation errors
-    # -----------------------------------------------------
+    # =====================================================
+    # STOP ON UI VALIDATION ERRORS
+    # =====================================================
 
     if validation_errors:
 
@@ -729,11 +810,13 @@ if receive_clicked:
             "Please correct the following errors:"
         )
 
+
         for error in validation_errors:
 
             st.write(
                 f"• {error}"
             )
+
 
         db.close()
 
@@ -745,29 +828,44 @@ if receive_clicked:
     # =====================================================
 
     user = (
-        st.session_state.get("username")
-        or st.session_state.get("user")
+        st.session_state.get(
+            "username"
+        )
+        or st.session_state.get(
+            "user"
+        )
         or "STREAMLIT_USER"
     )
 
 
     successful_rolls = []
+
     failed_rolls = []
 
 
-    progress = st.progress(0)
+    # =====================================================
+    # PROGRESS
+    # =====================================================
+
+    progress = st.progress(
+        0
+    )
 
     status_text = st.empty()
 
 
-    total_rolls = len(roll_data)
+    total_rolls = len(
+        roll_data
+    )
 
 
     # =====================================================
     # PROCESS EACH ROLL
     # =====================================================
 
-    for index, row in enumerate(roll_data):
+    for index, row in enumerate(
+        roll_data
+    ):
 
         roll_position = index + 1
 
@@ -780,6 +878,10 @@ if receive_clicked:
             )
         )
 
+
+        # -------------------------------------------------
+        # Read row values
+        # -------------------------------------------------
 
         manufacturer_roll_no = str(
             row.get(
@@ -825,7 +927,7 @@ if receive_clicked:
 
 
         # -------------------------------------------------
-        # Build MediaRoll
+        # Build Media Roll
         # -------------------------------------------------
 
         media_roll = MediaRoll(
@@ -879,15 +981,58 @@ if receive_clicked:
         # BUSINESS SERVICE
         # -------------------------------------------------
 
-        result = MediaRollService.receive(
-            db=db,
-            media_roll=media_roll,
-            user=user,
-        )
+        try:
+
+            result = (
+                MediaRollService.receive(
+                    db=db,
+                    media_roll=media_roll,
+                    user=user,
+                )
+            )
+
+
+        except Exception as exc:
+
+            # -------------------------------------------------
+            # Unexpected exception
+            # -------------------------------------------------
+            #
+            # The service normally converts business failures
+            # into ServiceResult. This catch is only a final
+            # protection against an unexpected application
+            # exception escaping the service.
+            # -------------------------------------------------
+
+            failed_rolls.append(
+                {
+                    "roll": roll_position,
+
+                    "manufacturer_roll_no": (
+                        manufacturer_roll_no
+                    ),
+
+                    "message": (
+                        "Unexpected error while "
+                        "receiving this roll."
+                    ),
+
+                    "errors": [
+                        str(exc)
+                    ],
+                }
+            )
+
+
+            progress.progress(
+                roll_position / total_rolls
+            )
+
+            continue
 
 
         # -------------------------------------------------
-        # RESULT
+        # SERVICE RESULT
         # -------------------------------------------------
 
         if result.success:
@@ -901,27 +1046,45 @@ if receive_clicked:
             failed_rolls.append(
                 {
                     "roll": roll_position,
+
                     "manufacturer_roll_no": (
                         manufacturer_roll_no
                     ),
-                    "message": result.message,
+
+                    "message": (
+                        result.message
+                    ),
+
                     "errors": (
-                        result.errors or []
+                        result.errors
+                        or []
                     ),
                 }
             )
 
+
+        # -------------------------------------------------
+        # Progress
+        # -------------------------------------------------
 
         progress.progress(
             roll_position / total_rolls
         )
 
 
+    # =====================================================
+    # COMPLETE PROGRESS
+    # =====================================================
+
+    progress.progress(
+        1.0
+    )
+
     status_text.empty()
 
 
     # =====================================================
-    # SUCCESS
+    # SUCCESSFUL ROLLS
     # =====================================================
 
     if successful_rolls:
@@ -942,26 +1105,33 @@ if receive_clicked:
         success_rows = []
 
 
-        for received_roll in successful_rolls:
+        for received_roll in (
+            successful_rolls
+        ):
 
             success_rows.append(
                 {
                     "Roll Number": (
                         received_roll.roll_number
                     ),
+
                     "Asset ID": (
                         received_roll.asset_id
                     ),
+
                     "Manufacturer Roll No.": (
                         received_roll.manufacturer_roll_no
                     ),
+
                     "Status": (
                         received_roll.status
                     ),
+
                     "Total Sq Ft": round(
                         received_roll.total_sqft,
                         2,
                     ),
+
                     "QR": (
                         "Generated"
                         if received_roll.qr_image_path
@@ -994,56 +1164,89 @@ if receive_clicked:
 
         for failed in failed_rolls:
 
+            manufacturer_roll_label = (
+                failed[
+                    "manufacturer_roll_no"
+                ]
+                or "No Manufacturer Roll No."
+            )
+
+
             with st.expander(
                 (
                     f"Roll {failed['roll']} — "
-                    f"{failed['manufacturer_roll_no']}"
+                    f"{manufacturer_roll_label}"
                 )
             ):
 
-                st.write(
-                    failed["message"]
+                st.error(
+                    failed[
+                        "message"
+                    ]
                 )
 
 
-                for error in failed["errors"]:
+                errors = failed.get(
+                    "errors",
+                    [],
+                )
+
+
+                if errors:
+
+                    for error in errors:
+
+                        st.write(
+                            f"• {error}"
+                        )
+
+                else:
 
                     st.write(
-                        f"• {error}"
+                        "No additional error details were returned."
                     )
 
 
     # =====================================================
-    # FINAL STATUS
+    # FINAL BATCH SUMMARY
     # =====================================================
 
-    if successful_rolls and not failed_rolls:
-
-        st.info(
-            "All rolls have been received into inventory. "
-            "Each roll has its own Asset ID, Roll Number, "
-            "QR code, inventory transaction and history."
-        )
-
-
-    elif successful_rolls and failed_rolls:
+    if (
+        successful_rolls
+        and failed_rolls
+    ):
 
         st.warning(
-            "Some rolls were received successfully while "
-            "others failed. Each roll is processed as an "
-            "independent business transaction."
+            (
+                "Completed with partial success: "
+                f"{len(successful_rolls)} received, "
+                f"{len(failed_rolls)} failed."
+            )
         )
 
 
-    else:
+    elif (
+        not successful_rolls
+        and failed_rolls
+    ):
 
         st.error(
-            "No rolls were received."
+            "No Media Rolls were received."
         )
 
 
-# =========================================================
-# DATABASE CLEANUP
-# =========================================================
+    elif (
+        not successful_rolls
+        and not failed_rolls
+    ):
 
-db.close()
+        st.warning(
+            "No Media Rolls were processed."
+        )
+
+
+    # =====================================================
+    # CLOSE DATABASE SESSION
+    # =====================================================
+
+    db.close()
