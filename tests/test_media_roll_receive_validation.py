@@ -421,3 +421,76 @@ def test_invalid_total_sqft():
 
 
     db.close()
+
+    def test_matching_manufacturer_and_product_is_accepted():
+
+    db = create_test_db()
+
+    master = create_master_data(db)
+
+    roll = build_media_roll(
+        master,
+        manufacturer_roll_no=(
+            "MATCHING-MANUFACTURER-001"
+        ),
+    )
+
+    result = MediaRollService.receive(
+        db=db,
+        media_roll=roll,
+        user="TEST",
+    )
+
+    assert result.success is True
+
+    db.close()
+
+
+    def test_mismatched_manufacturer_and_product_is_rejected():
+
+    db = create_test_db()
+
+    master = create_master_data(db)
+
+    # Create a second manufacturer.
+    second_manufacturer = Manufacturer(
+        manufacturer_code="TEST-MF002",
+        manufacturer_name="Second Manufacturer",
+        country="India",
+        website="",
+        is_active=True,
+    )
+
+    db.add(second_manufacturer)
+    db.flush()
+
+    # Keep the product belonging to manufacturer 1,
+    # but assign manufacturer 2 to the roll.
+    roll = build_media_roll(
+        master,
+        manufacturer_roll_no=(
+            "MISMATCH-MANUFACTURER-001"
+        ),
+    )
+
+    roll.manufacturer_id = (
+        second_manufacturer.id
+    )
+
+    db.commit()
+
+    result = MediaRollService.receive(
+        db=db,
+        media_roll=roll,
+        user="TEST",
+    )
+
+    assert result.success is False
+
+    assert any(
+        "does not match the Manufacturer"
+        in error
+        for error in result.errors
+    )
+
+    db.close()
