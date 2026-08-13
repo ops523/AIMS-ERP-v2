@@ -10,25 +10,12 @@ from database import get_session
 
 from models.media_roll import MediaRoll
 
-from repositories.supplier_repository import (
-    SupplierRepository,
-)
+from repositories.supplier_repository import SupplierRepository
+from repositories.manufacturer_repository import ManufacturerRepository
+from repositories.warehouse_repository import WarehouseRepository
+from repositories.media_product_repository import MediaProductRepository
 
-from repositories.manufacturer_repository import (
-    ManufacturerRepository,
-)
-
-from repositories.warehouse_repository import (
-    WarehouseRepository,
-)
-
-from repositories.media_product_repository import (
-    MediaProductRepository,
-)
-
-from services.media_roll_service import (
-    MediaRollService,
-)
+from services.media_roll_service import MediaRollService
 
 
 # =========================================================
@@ -56,23 +43,16 @@ db = get_session()
 try:
 
     suppliers = SupplierRepository.get_all(db)
-
     manufacturers = ManufacturerRepository.get_all(db)
-
     warehouses = WarehouseRepository.get_all(db)
-
     products = MediaProductRepository.get_all(db)
 
 except Exception as exc:
 
-    st.error(
-        "Unable to load master data."
-    )
-
+    st.error("Unable to load master data.")
     st.exception(exc)
 
     db.close()
-
     st.stop()
 
 
@@ -88,7 +68,6 @@ if not suppliers:
     )
 
     db.close()
-
     st.stop()
 
 
@@ -100,7 +79,6 @@ if not manufacturers:
     )
 
     db.close()
-
     st.stop()
 
 
@@ -112,7 +90,6 @@ if not warehouses:
     )
 
     db.close()
-
     st.stop()
 
 
@@ -124,15 +101,15 @@ if not products:
     )
 
     db.close()
-
     st.stop()
 
 
 # =========================================================
-# COMMON RECEIPT INFORMATION
+# RECEIPT INFORMATION
 # =========================================================
 
 st.subheader("Receipt Information")
+
 
 c1, c2 = st.columns(2)
 
@@ -143,8 +120,7 @@ with c1:
         "Supplier",
         suppliers,
         format_func=lambda x: (
-            f"{x.supplier_code} — "
-            f"{x.supplier_name}"
+            f"{x.supplier_code} — {x.supplier_name}"
         ),
     )
 
@@ -155,8 +131,7 @@ with c2:
         "Manufacturer",
         manufacturers,
         format_func=lambda x: (
-            f"{x.manufacturer_code} — "
-            f"{x.manufacturer_name}"
+            f"{x.manufacturer_code} — {x.manufacturer_name}"
         ),
     )
 
@@ -170,8 +145,7 @@ with c3:
         "Warehouse",
         warehouses,
         format_func=lambda x: (
-            f"{x.warehouse_code} — "
-            f"{x.warehouse_name}"
+            f"{x.warehouse_code} — {x.warehouse_name}"
         ),
     )
 
@@ -182,8 +156,7 @@ with c4:
         "Media Product",
         products,
         format_func=lambda x: (
-            f"{x.product_code} — "
-            f"{x.product_name}"
+            f"{x.product_code} — {x.product_name}"
         ),
     )
 
@@ -236,6 +209,7 @@ st.divider()
 
 st.subheader("Selected Media Product")
 
+
 pc1, pc2, pc3, pc4 = st.columns(4)
 
 
@@ -249,19 +223,40 @@ with pc1:
 
 with pc2:
 
-    st.metric(
-        "Standard Width",
-        f"{product.width_ft:g} ft",
+    standard_width = getattr(
+        product,
+        "width_ft",
+        None,
     )
+
+    if standard_width:
+
+        st.metric(
+            "Standard Width",
+            f"{float(standard_width):g} ft",
+        )
+
+    else:
+
+        st.metric(
+            "Standard Width",
+            "Not Set",
+        )
 
 
 with pc3:
 
-    if product.standard_length_m:
+    standard_length = getattr(
+        product,
+        "standard_length_m",
+        None,
+    )
+
+    if standard_length:
 
         st.metric(
             "Standard Length",
-            f"{product.standard_length_m:g} m",
+            f"{float(standard_length):g} m",
         )
 
     else:
@@ -274,11 +269,17 @@ with pc3:
 
 with pc4:
 
-    if product.gsm is not None:
+    gsm = getattr(
+        product,
+        "gsm",
+        None,
+    )
+
+    if gsm is not None:
 
         st.metric(
             "GSM",
-            f"{product.gsm:g}",
+            f"{float(gsm):g}",
         )
 
     else:
@@ -287,6 +288,43 @@ with pc4:
             "GSM",
             "Not Set",
         )
+
+
+# =========================================================
+# DEFAULT ROLL VALUES
+# =========================================================
+
+default_length = (
+    float(standard_length)
+    if standard_length
+    else 50.0
+)
+
+
+default_width = (
+    float(standard_width)
+    if standard_width
+    else 4.0
+)
+
+
+if default_width not in (4.0, 5.0):
+
+    default_width = 4.0
+
+
+default_rows = []
+
+for _ in range(int(number_of_rolls)):
+
+    default_rows.append(
+        {
+            "Manufacturer Roll No.": "",
+            "Ordered Length (m)": default_length,
+            "Actual Length (m)": default_length,
+            "Width (ft)": default_width,
+        }
+    )
 
 
 # =========================================================
@@ -303,42 +341,6 @@ st.info(
     "Roll Number, QR code, inventory transaction "
     "and history."
 )
-
-
-# =========================================================
-# DEFAULT VALUES
-# =========================================================
-
-default_length = (
-    float(product.standard_length_m)
-    if product.standard_length_m
-    else 50.0
-)
-
-default_width = (
-    float(product.width_ft)
-    if product.width_ft
-    else 4.0
-)
-
-
-if default_width not in (4.0, 5.0):
-
-    default_width = 4.0
-
-
-default_rows = []
-
-for index in range(int(number_of_rolls)):
-
-    default_rows.append(
-        {
-            "Manufacturer Roll No.": "",
-            "Ordered Length (m)": default_length,
-            "Actual Length (m)": default_length,
-            "Width (ft)": default_width,
-        }
-    )
 
 
 # =========================================================
@@ -382,6 +384,31 @@ roll_data = st.data_editor(
 
 
 # =========================================================
+# NORMALIZE DATA EDITOR RESULT
+# =========================================================
+#
+# Streamlit can return the edited data as a list of
+# dictionaries. We deliberately use enumerate() below
+# instead of .iterrows().
+#
+# =========================================================
+
+if roll_data is None:
+
+    roll_data = []
+
+
+if hasattr(roll_data, "to_dict"):
+
+    roll_data = roll_data.to_dict(
+        orient="records"
+    )
+
+
+roll_data = list(roll_data)
+
+
+# =========================================================
 # ROLL PREVIEW
 # =========================================================
 
@@ -389,25 +416,19 @@ st.divider()
 
 st.subheader("Receipt Preview")
 
+
 preview_rows = []
 
+
 for index, row in enumerate(roll_data):
-    roll_position = index + 1
-    
+
     try:
 
         actual_length = float(
-            row["Actual Length (m)"]
-        )
-
-        width_ft = float(
-            row["Width (ft)"]
-        )
-
-        total_sqft = (
-            actual_length
-            * 3.28084
-            * width_ft
+            row.get(
+                "Actual Length (m)",
+                0,
+            )
         )
 
     except (
@@ -415,17 +436,43 @@ for index, row in enumerate(roll_data):
         ValueError,
     ):
 
-        total_sqft = 0.0
+        actual_length = 0.0
+
+
+    try:
+
+        width_ft = float(
+            row.get(
+                "Width (ft)",
+                0,
+            )
+        )
+
+    except (
+        TypeError,
+        ValueError,
+    ):
+
+        width_ft = 0.0
+
+
+    total_sqft = (
+        actual_length
+        * 3.28084
+        * width_ft
+    )
+
 
     preview_rows.append(
         {
             "Roll": index + 1,
-            "Manufacturer Roll No.": (
-                row["Manufacturer Roll No."]
-            ),
-            "Actual Length (m)": (
-                row["Actual Length (m)"]
-            ),
+            "Manufacturer Roll No.": str(
+                row.get(
+                    "Manufacturer Roll No.",
+                    "",
+                )
+            ).strip(),
+            "Actual Length (m)": actual_length,
             "Width (ft)": width_ft,
             "Calculated Sq Ft": round(
                 total_sqft,
@@ -480,16 +527,14 @@ with sc3:
 
 
 # =========================================================
-# RECEIVING USER
+# REMARKS
 # =========================================================
 
 st.divider()
 
 remarks = st.text_area(
     "Remarks",
-    placeholder=(
-        "Optional remarks about this receipt..."
-    ),
+    placeholder="Optional remarks about this receipt...",
 )
 
 
@@ -512,6 +557,7 @@ if receive_clicked:
 
     validation_errors = []
 
+
     # -----------------------------------------------------
     # Header validation
     # -----------------------------------------------------
@@ -522,11 +568,13 @@ if receive_clicked:
             "Supplier is required."
         )
 
+
     if manufacturer is None:
 
         validation_errors.append(
             "Manufacturer is required."
         )
+
 
     if warehouse is None:
 
@@ -534,22 +582,30 @@ if receive_clicked:
             "Warehouse is required."
         )
 
+
     if product is None:
 
         validation_errors.append(
             "Media Product is required."
         )
 
+
     # -----------------------------------------------------
     # Roll validation
     # -----------------------------------------------------
 
     for index, row in enumerate(roll_data):
-        roll_position = index + 1
-        
+
+        roll_number_display = index + 1
+
+
         manufacturer_roll_no = str(
-            row["Manufacturer Roll No."]
+            row.get(
+                "Manufacturer Roll No.",
+                "",
+            )
         ).strip()
+
 
         if not manufacturer_roll_no:
 
@@ -560,10 +616,14 @@ if receive_clicked:
                 )
             )
 
+
         try:
 
             ordered_length = float(
-                row["Ordered Length (m)"]
+                row.get(
+                    "Ordered Length (m)",
+                    0,
+                )
             )
 
         except (
@@ -571,7 +631,7 @@ if receive_clicked:
             ValueError,
         ):
 
-            ordered_length = 0
+            ordered_length = 0.0
 
             validation_errors.append(
                 (
@@ -580,10 +640,14 @@ if receive_clicked:
                 )
             )
 
+
         try:
 
             actual_length = float(
-                row["Actual Length (m)"]
+                row.get(
+                    "Actual Length (m)",
+                    0,
+                )
             )
 
         except (
@@ -591,7 +655,7 @@ if receive_clicked:
             ValueError,
         ):
 
-            actual_length = 0
+            actual_length = 0.0
 
             validation_errors.append(
                 (
@@ -600,10 +664,14 @@ if receive_clicked:
                 )
             )
 
+
         try:
 
             width_ft = float(
-                row["Width (ft)"]
+                row.get(
+                    "Width (ft)",
+                    0,
+                )
             )
 
         except (
@@ -611,7 +679,7 @@ if receive_clicked:
             ValueError,
         ):
 
-            width_ft = 0
+            width_ft = 0.0
 
             validation_errors.append(
                 (
@@ -619,6 +687,7 @@ if receive_clicked:
                     "Width must be valid."
                 )
             )
+
 
         if ordered_length <= 0:
 
@@ -629,6 +698,7 @@ if receive_clicked:
                 )
             )
 
+
         if actual_length <= 0:
 
             validation_errors.append(
@@ -637,6 +707,7 @@ if receive_clicked:
                     "Actual Length must be greater than zero."
                 )
             )
+
 
         if width_ft not in (4.0, 5.0):
 
@@ -647,8 +718,9 @@ if receive_clicked:
                 )
             )
 
+
     # -----------------------------------------------------
-    # Display validation errors
+    # Stop on validation errors
     # -----------------------------------------------------
 
     if validation_errors:
@@ -669,41 +741,37 @@ if receive_clicked:
 
 
     # =====================================================
-    # PROCESS EACH ROLL
+    # RECEIVING USER
     # =====================================================
 
     user = (
-        st.session_state.get(
-            "username"
-        )
-        or st.session_state.get(
-            "user"
-        )
+        st.session_state.get("username")
+        or st.session_state.get("user")
         or "STREAMLIT_USER"
     )
 
 
     successful_rolls = []
-
     failed_rolls = []
 
 
-    progress = st.progress(
-        0
-    )
-
+    progress = st.progress(0)
 
     status_text = st.empty()
 
 
-    total_rolls = len(
-        roll_data
-    )
+    total_rolls = len(roll_data)
 
+
+    # =====================================================
+    # PROCESS EACH ROLL
+    # =====================================================
 
     for index, row in enumerate(roll_data):
+
         roll_position = index + 1
-        
+
+
         status_text.info(
             (
                 f"Receiving roll "
@@ -714,27 +782,39 @@ if receive_clicked:
 
 
         manufacturer_roll_no = str(
-            row["Manufacturer Roll No."]
+            row.get(
+                "Manufacturer Roll No.",
+                "",
+            )
         ).strip()
 
 
         ordered_length = float(
-            row["Ordered Length (m)"]
+            row.get(
+                "Ordered Length (m)",
+                0,
+            )
         )
 
 
         actual_length = float(
-            row["Actual Length (m)"]
+            row.get(
+                "Actual Length (m)",
+                0,
+            )
         )
 
 
         width_ft = float(
-            row["Width (ft)"]
+            row.get(
+                "Width (ft)",
+                0,
+            )
         )
 
 
         # -------------------------------------------------
-        # Calculate actual physical area
+        # Calculate physical area
         # -------------------------------------------------
 
         total_sqft = (
@@ -745,7 +825,7 @@ if receive_clicked:
 
 
         # -------------------------------------------------
-        # Build MediaRoll business object
+        # Build MediaRoll
         # -------------------------------------------------
 
         media_roll = MediaRoll(
@@ -792,12 +872,11 @@ if receive_clicked:
                 remarks.strip()
                 or None
             ),
-
         )
 
 
         # -------------------------------------------------
-        # Business transaction
+        # BUSINESS SERVICE
         # -------------------------------------------------
 
         result = MediaRollService.receive(
@@ -808,15 +887,13 @@ if receive_clicked:
 
 
         # -------------------------------------------------
-        # Result handling
+        # RESULT
         # -------------------------------------------------
 
         if result.success:
 
-            received_roll = result.data
-
             successful_rolls.append(
-                received_roll
+                result.data
             )
 
         else:
@@ -828,7 +905,9 @@ if receive_clicked:
                         manufacturer_roll_no
                     ),
                     "message": result.message,
-                    "errors": result.errors or [],
+                    "errors": (
+                        result.errors or []
+                    ),
                 }
             )
 
@@ -842,7 +921,7 @@ if receive_clicked:
 
 
     # =====================================================
-    # SUCCESS SUMMARY
+    # SUCCESS
     # =====================================================
 
     if successful_rolls:
@@ -926,6 +1005,7 @@ if receive_clicked:
                     failed["message"]
                 )
 
+
                 for error in failed["errors"]:
 
                     st.write(
@@ -934,7 +1014,7 @@ if receive_clicked:
 
 
     # =====================================================
-    # FINAL MESSAGE
+    # FINAL STATUS
     # =====================================================
 
     if successful_rolls and not failed_rolls:
@@ -949,11 +1029,9 @@ if receive_clicked:
     elif successful_rolls and failed_rolls:
 
         st.warning(
-            (
-                "Some rolls were received successfully "
-                "while others failed. Each roll is processed "
-                "as an independent business transaction."
-            )
+            "Some rolls were received successfully while "
+            "others failed. Each roll is processed as an "
+            "independent business transaction."
         )
 
 
@@ -965,7 +1043,7 @@ if receive_clicked:
 
 
 # =========================================================
-# CLEANUP
+# DATABASE CLEANUP
 # =========================================================
 
 db.close()
