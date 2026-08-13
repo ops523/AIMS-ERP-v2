@@ -422,7 +422,7 @@ def test_invalid_total_sqft():
 
     db.close()
 
-    def test_matching_manufacturer_and_product_is_accepted():
+def test_matching_manufacturer_and_product_is_accepted():
 
     db = create_test_db()
 
@@ -446,7 +446,7 @@ def test_invalid_total_sqft():
     db.close()
 
 
-    def test_mismatched_manufacturer_and_product_is_rejected():
+def test_mismatched_manufacturer_and_product_is_rejected():
 
     db = create_test_db()
 
