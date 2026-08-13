@@ -64,7 +64,7 @@ class MediaRollRepository(BaseRepository[MediaRoll]):
             .first()
         )
 
-        @classmethod
+    @classmethod
     def get_by_manufacturer_roll_no(
         cls,
         db: Session,
