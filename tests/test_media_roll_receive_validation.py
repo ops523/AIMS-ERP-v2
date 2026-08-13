@@ -477,7 +477,6 @@ def test_mismatched_manufacturer_and_product_is_rejected():
         second_manufacturer.id
     )
 
-    db.commit()
 
     result = MediaRollService.receive(
         db=db,
