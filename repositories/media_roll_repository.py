@@ -64,6 +64,33 @@ class MediaRollRepository(BaseRepository[MediaRoll]):
             .first()
         )
 
+        @classmethod
+    def get_by_manufacturer_roll_no(
+        cls,
+        db: Session,
+        manufacturer_roll_no: str,
+    ) -> Optional[MediaRoll]:
+
+        if not manufacturer_roll_no:
+            return None
+
+        manufacturer_roll_no = (
+            manufacturer_roll_no.strip()
+        )
+
+        if not manufacturer_roll_no:
+            return None
+
+        return (
+            db.query(MediaRoll)
+            .filter(
+                MediaRoll.manufacturer_roll_no
+                == manufacturer_roll_no,
+                MediaRoll.is_active.is_(True),
+            )
+            .first()
+        )
+
     # =========================================================
     # STATUS
     # =========================================================
