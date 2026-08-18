@@ -1,82 +1,25 @@
-from __future__ import annotations
-
 from sqlalchemy.orm import Session
 
-from models.printing_session import PrintingSession
+from models.printer import Printer
 
 
-class PrintingSessionRepository:
-
-    @staticmethod
-    def create(
-        db: Session,
-        session: PrintingSession,
-    ) -> PrintingSession:
-        """
-        Create a printing session without committing.
-
-        Transaction ownership remains with the calling service.
-        """
-
-        db.add(session)
-        db.flush()
-
-        return session
+class PrinterRepository:
 
     @staticmethod
-    def get_by_batch(
-        db: Session,
-        batch_id: int,
-    ):
+    def get_all(db: Session):
+
         return (
-            db.query(PrintingSession)
-            .filter(
-                PrintingSession.production_batch_id
-                == batch_id
-            )
-            .order_by(
-                PrintingSession.id
-            )
+            db.query(Printer)
+            .filter(Printer.is_active == True)
+            .order_by(Printer.printer_name)
             .all()
         )
 
     @staticmethod
-    def get_active(
-        db: Session,
-    ):
-        return (
-            db.query(PrintingSession)
-            .filter(
-                PrintingSession.status
-                == "IN_PROGRESS"
-            )
-            .order_by(
-                PrintingSession.id
-            )
-            .all()
-        )
+    def create(db: Session, printer: Printer):
 
-    @staticmethod
-    def get_by_id(
-        db: Session,
-        session_id: int,
-    ):
-        return (
-            db.query(PrintingSession)
-            .filter(
-                PrintingSession.id
-                == session_id
-            )
-            .first()
-        )
+        db.add(printer)
+        db.commit()
+        db.refresh(printer)
 
-    @staticmethod
-    def update(
-        db: Session,
-        session: PrintingSession,
-    ) -> PrintingSession:
-
-        db.add(session)
-        db.flush()
-
-        return session
+        return printer
