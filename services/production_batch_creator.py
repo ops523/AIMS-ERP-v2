@@ -1,8 +1,13 @@
+from __future__ import annotations
+
 from sqlalchemy.orm import Session
 
 from models.production_batch import ProductionBatch
 from models.production_item import ProductionItem
-from models.production_allocation import ProductionAllocation
+
+from services.production_allocation_service import (
+    ProductionAllocationService,
+)
 
 from services.printing_session_service import (
     PrintingSessionService,
@@ -28,92 +33,225 @@ class ProductionBatchCreator:
         roll_allocations,
         remarks=None,
     ):
+        """
+        Create a complete production batch atomically.
 
-        batch = ProductionBatch(
-            batch_number=None,          # generated later
-            printer_id=printer.id,
-            status="PLANNED",
-            remarks=remarks,
-        )
+        Flow:
 
-        db.add(batch)
-        db.flush()
+            Batch
+              ↓
+            Items
+              ↓
+            Allocations
+              ↓
+            Inventory Reservation
+              ↓
+            Printing Session
+              ↓
+            Activity Log
+              ↓
+            COMMIT
 
-        production_items = []
+        If any operation fails, the transaction is rolled back.
+        """
 
-        for artwork in artworks:
+        try:
 
-            item = ProductionItem(
-                production_batch_id=batch.id,
-                campaign_artwork_id=artwork.id,
-                planned_sqft=artwork.artwork_sqft,
-                printed_sqft=0,
-                wastage_sqft=0,
-                status="PENDING",
+            # --------------------------------------------------
+            # 1. Validate inputs
+            # --------------------------------------------------
+
+            if printer is None:
+                raise ValueError(
+                    "Printer is required."
+                )
+
+            if campaign_version is None:
+                raise ValueError(
+                    "Campaign version is required."
+                )
+
+            if not artworks:
+                raise ValueError(
+                    "At least one artwork is required."
+                )
+
+            if not roll_allocations:
+                raise ValueError(
+                    "At least one media roll allocation is required."
+                )
+
+            # --------------------------------------------------
+            # 2. Create production batch
+            # --------------------------------------------------
+
+            batch = ProductionBatch(
+                batch_number=None,
+                printer_id=printer.id,
+                status="PLANNED",
+                remarks=remarks,
             )
 
-            db.add(item)
+            db.add(batch)
             db.flush()
 
-            production_items.append(item)
+            # --------------------------------------------------
+            # 3. Create production items
+            # --------------------------------------------------
 
-        db.flush()
+            artwork_items = {}
 
-        #
-        # Roll Allocations
-        #
+            for artwork in artworks:
 
-        for allocation in roll_allocations:
+                if artwork is None:
+                    raise ValueError(
+                        "Invalid artwork supplied."
+                    )
 
-            pa = ProductionAllocation(
+                planned_sqft = float(
+                    artwork.artwork_sqft or 0
+                )
 
-                production_item_id=allocation["production_item_id"],
+                if planned_sqft <= 0:
+                    raise ValueError(
+                        (
+                            "Artwork must have a "
+                            "positive square-foot quantity."
+                        )
+                    )
 
-                media_roll_id=allocation["media_roll_id"],
+                item = ProductionItem(
+                    production_batch_id=batch.id,
+                    campaign_artwork_id=artwork.id,
+                    planned_sqft=planned_sqft,
+                    printed_sqft=0,
+                    wastage_sqft=0,
+                    status="PENDING",
+                )
 
-                allocated_sqft=allocation["allocated_sqft"],
+                db.add(item)
+                db.flush()
 
-                consumed_sqft=0,
+                artwork_items[artwork.id] = item
 
-                wastage_sqft=0,
+            # --------------------------------------------------
+            # 4. Validate and create roll allocations
+            # --------------------------------------------------
 
-                status="RESERVED",
+            created_allocations = []
+
+            for allocation_data in roll_allocations:
+
+                artwork_id = allocation_data.get(
+                    "campaign_artwork_id"
+                )
+
+                if artwork_id is None:
+                    raise ValueError(
+                        (
+                            "campaign_artwork_id is required "
+                            "for every roll allocation."
+                        )
+                    )
+
+                item = artwork_items.get(
+                    artwork_id
+                )
+
+                if item is None:
+                    raise ValueError(
+                        (
+                            "Roll allocation references "
+                            "an artwork that is not part "
+                            "of this production batch."
+                        )
+                    )
+
+                media_roll = allocation_data.get(
+                    "media_roll"
+                )
+
+                if media_roll is None:
+                    raise ValueError(
+                        (
+                            "media_roll is required "
+                            "for every allocation."
+                        )
+                    )
+
+                allocated_sqft = float(
+                    allocation_data.get(
+                        "allocated_sqft",
+                        0,
+                    )
+                )
+
+                if allocated_sqft <= 0:
+                    raise ValueError(
+                        (
+                            "Allocated square feet "
+                            "must be greater than zero."
+                        )
+                    )
+
+                allocation = (
+                    ProductionAllocationService.allocate(
+                        db=db,
+                        batch=batch,
+                        item=item,
+                        artwork=item.campaign_artwork,
+                        media_roll=media_roll,
+                        allocated_sqft=allocated_sqft,
+                        status="ALLOCATED",
+                    )
+                )
+
+                created_allocations.append(
+                    allocation
+                )
+
+            db.flush()
+
+            # --------------------------------------------------
+            # 5. Reserve media-roll inventory
+            # --------------------------------------------------
+
+            InventoryTransactionService.reserve_batch(
+                db=db,
+                batch=batch,
             )
 
-            db.add(pa)
+            # --------------------------------------------------
+            # 6. Create printing session
+            # --------------------------------------------------
 
-        db.flush()
+            PrintingSessionService.start_session(
+                db=db,
+                batch=batch,
+                printer=printer,
+            )
 
-        #
-        # Create Printing Session
-        #
+            # --------------------------------------------------
+            # 7. Activity log
+            # --------------------------------------------------
 
-        PrintingSessionService.start_session(
-            db,
-            batch=batch,
-            printer=printer,
-        )
+            ActivityLogService.batch_created(
+                db=db,
+                batch=batch,
+            )
 
-        #
-        # Inventory Reservation
-        #
+            # --------------------------------------------------
+            # 8. Commit ONLY after everything succeeds
+            # --------------------------------------------------
 
-        InventoryTransactionService.reserve_batch(
-            db=db,
-            batch=batch,
-        )
+            db.commit()
 
-        #
-        # Activity Log
-        #
+            db.refresh(batch)
 
-        ActivityLogService.batch_created(
-            db=db,
-            batch=batch,
-        )
+            return batch
 
-        db.commit()
+        except Exception:
 
-        db.refresh(batch)
+            db.rollback()
 
-        return batch
+            raise
