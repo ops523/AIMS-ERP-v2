@@ -64,16 +64,14 @@ def _create_printer(db):
 
 def _create_campaign(db):
     """
-    Create a minimal campaign where possible.
-
-    The model may contain additional mandatory fields in future
-    versions, so this helper intentionally keeps the fixture small.
+    Create a minimal campaign required by ProductionBatch tests.
     """
 
     from models.campaign import Campaign
 
     campaign = Campaign(
         campaign_code="PACK9B-TEST-CAMPAIGN",
+        client_name="PACK9B TEST CLIENT",
         campaign_name="PACK9B TEST CAMPAIGN",
     )
 
