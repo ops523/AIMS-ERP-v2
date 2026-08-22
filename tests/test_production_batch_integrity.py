@@ -73,6 +73,7 @@ def _create_campaign(db):
     from models.campaign import Campaign
 
     campaign = Campaign(
+        campaign_code="PACK9B-TEST-CAMPAIGN",
         campaign_name="PACK9B TEST CAMPAIGN",
     )
 
@@ -80,7 +81,6 @@ def _create_campaign(db):
     db.flush()
 
     return campaign
-
 
 def _create_artwork(db, campaign=None, sqft=100.0):
     """
