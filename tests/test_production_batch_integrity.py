@@ -52,6 +52,7 @@ def _create_printer(db):
     from models.printer import Printer
 
     printer = Printer(
+        printer_code="PACK9B-TEST-PRINTER",
         printer_name="PACK9B-TEST-PRINTER",
         is_active=True,
     )
@@ -60,7 +61,6 @@ def _create_printer(db):
     db.flush()
 
     return printer
-
 
 def _create_campaign(db):
     """
