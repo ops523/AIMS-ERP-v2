@@ -107,7 +107,7 @@ def _create_artwork(
             campaign_id=campaign.id,
             version_no=1,
             version_name="V1",
-            import_batch="PACK9B-TEST-IMPORT",
+            import_batch=f"PACK9B-{uuid.uuid4().hex[:8]}",
             total_locations=1,
             total_walls=1,
             total_sqft=sqft,
