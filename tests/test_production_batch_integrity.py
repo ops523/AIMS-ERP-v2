@@ -67,13 +67,16 @@ def _create_campaign(db):
     Create a minimal campaign required by ProductionBatch tests.
     """
 
+    from datetime import date
     from models.campaign import Campaign
 
     campaign = Campaign(
         campaign_code="PACK9B-TEST-CAMPAIGN",
         client_name="PACK9B TEST CLIENT",
-        campaign_name="PACK9B TEST CAMPAIGN",
         brand_name="PACK9B TEST BRAND",
+        campaign_name="PACK9B TEST CAMPAIGN",
+        start_date=date(2026, 8, 1),
+        end_date=date(2026, 8, 31),
     )
 
     db.add(campaign)
