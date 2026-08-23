@@ -73,6 +73,7 @@ def _create_campaign(db):
         campaign_code="PACK9B-TEST-CAMPAIGN",
         client_name="PACK9B TEST CLIENT",
         campaign_name="PACK9B TEST CAMPAIGN",
+        brand_name="PACK9B TEST BRAND",
     )
 
     db.add(campaign)
