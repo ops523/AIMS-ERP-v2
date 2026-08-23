@@ -86,28 +86,34 @@ def _create_campaign(db):
 
 def _create_artwork(
     db,
+    campaign=None,
     campaign_version=None,
     sqft=100.0,
 ):
     """
     Create a minimal CampaignArtwork fixture.
 
-    CampaignArtwork belongs to CampaignVersion,
-    not directly to Campaign.
+    CampaignArtwork belongs to CampaignVersion, not directly
+    to Campaign.
     """
 
     from models.campaign_artwork import CampaignArtwork
+    from models.campaign_version import CampaignVersion
 
     if campaign_version is None:
-        campaign = _create_campaign(db)
 
-        from models.campaign_version import CampaignVersion
+        if campaign is None:
+            campaign = _create_campaign(db)
+
+        import uuid
 
         campaign_version = CampaignVersion(
             campaign_id=campaign.id,
             version_no=1,
             version_name="V1",
-            import_batch=f"PACK9B-{uuid.uuid4().hex[:8]}",
+            import_batch=(
+                f"PACK9B-{uuid.uuid4().hex[:8]}"
+            ),
             total_locations=1,
             total_walls=1,
             total_sqft=sqft,
@@ -118,7 +124,9 @@ def _create_artwork(
 
     artwork = CampaignArtwork(
         campaign_version_id=campaign_version.id,
-        artwork_code=f"PACK9B-ART-{sqft}",
+        artwork_code=(
+            f"PACK9B-ART-{uuid.uuid4().hex[:8]}"
+        ),
         artwork_name="PACK9B TEST ARTWORK",
         file_name="pack9b-test.jpg",
         width_ft=10.0,
