@@ -87,18 +87,16 @@ def _create_campaign(db):
 def _create_artwork(db, campaign=None, sqft=100.0):
     """
     Create a minimal CampaignArtwork fixture.
+
+    CampaignArtwork does not expose campaign_id as an ORM keyword,
+    so the campaign argument is intentionally not assigned here.
     """
 
     from models.campaign_artwork import CampaignArtwork
 
-    kwargs = {
-        "artwork_sqft": sqft,
-    }
-
-    if campaign is not None:
-        kwargs["campaign_id"] = campaign.id
-
-    artwork = CampaignArtwork(**kwargs)
+    artwork = CampaignArtwork(
+        artwork_sqft=sqft,
+    )
 
     db.add(artwork)
     db.flush()
