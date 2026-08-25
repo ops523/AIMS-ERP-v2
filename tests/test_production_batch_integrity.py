@@ -15,15 +15,18 @@ from models.printing_session import PrintingSession
 # ============================================================
 
 def _get_session_factory():
-    """
-    Return the project's existing test-session factory.
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+    )
 
-    This helper keeps the test independent from the production
-    database configuration.
-    """
-    from tests.conftest import TestingSessionLocal
+    Base.metadata.create_all(engine)
 
-    return TestingSessionLocal
+    return sessionmaker(
+        bind=engine,
+        autocommit=False,
+        autoflush=False,
+    )
 
 
 # ============================================================
