@@ -131,15 +131,37 @@ def _create_artwork(
     return artwork
 
 
-def _create_media_roll(db, roll_number="PACK9B-ROLL-001"):
+def _create_media_roll(
+    db,
+    roll_number="PACK9B-ROLL-001",
+):
     """
-    Create a minimal MediaRoll required by ProductionAllocation.
+    Create a valid MediaRoll fixture required by ProductionAllocation.
     """
 
     from models.media_roll import MediaRoll
 
     roll = MediaRoll(
-        manufacturer_roll_number=roll_number,
+        asset_id=f"PACK9B-ASSET-{roll_number}",
+        roll_number=roll_number,
+
+        # These are mandatory foreign keys in MediaRoll.
+        supplier_id=1,
+        manufacturer_id=1,
+        product_id=1,
+        warehouse_id=1,
+
+        manufacturer_roll_no=roll_number,
+
+        ordered_length_m=100.0,
+        actual_length_m=100.0,
+        width_ft=4.0,
+
+        total_sqft=400.0,
+        available_sqft=400.0,
+
+        status="AVAILABLE",
+        is_active=True,
     )
 
     db.add(roll)
