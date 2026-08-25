@@ -107,17 +107,18 @@ def _create_artwork(
     campaign_version,
     sqft=100.0,
 ):
-    """
-    Create a valid CampaignArtwork fixture.
-    """
-
     from models.campaign_artwork import CampaignArtwork
+
+    count = (
+        db.query(CampaignArtwork)
+        .count()
+    )
 
     artwork = CampaignArtwork(
         campaign_version_id=campaign_version.id,
-        artwork_code="PACK9B-ART-001",
-        artwork_name="PACK9B TEST ARTWORK",
-        file_name="pack9b-test.jpg",
+        artwork_code=f"PACK9B-ART-{count + 1:03d}",
+        artwork_name=f"PACK9B TEST ARTWORK {count + 1}",
+        file_name=f"pack9b-test-{count + 1}.jpg",
         width_ft=10,
         height_ft=10,
         artwork_sqft=sqft,
