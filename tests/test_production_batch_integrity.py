@@ -4,6 +4,10 @@ from datetime import date
 
 import pytest
 
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+from models.base import Base
 from models.production_batch import ProductionBatch
 from models.production_item import ProductionItem
 from models.production_allocation import ProductionAllocation
