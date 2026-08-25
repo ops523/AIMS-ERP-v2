@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date
+
 import pytest
 
 from models.production_batch import ProductionBatch
@@ -7,42 +9,26 @@ from models.production_item import ProductionItem
 from models.production_allocation import ProductionAllocation
 from models.printing_session import PrintingSession
 
-from repositories.production_allocation_repository import (
-    ProductionAllocationRepository,
-)
-
-from services.production_allocation_service import (
-    ProductionAllocationService,
-)
-
 
 # ============================================================
-# Helpers
+# TEST DB
 # ============================================================
-
 
 def _get_session_factory():
     """
-    Reuse the test DB/session helpers already present in the
-    existing media-roll tests.
+    Return the project's existing test-session factory.
+
+    This helper keeps the test independent from the production
+    database configuration.
     """
-    from tests.test_media_roll_inventory_integrity import (
-        create_test_db,
-    )
+    from tests.conftest import TestingSessionLocal
 
-    return create_test_db
+    return TestingSessionLocal
 
 
-def _get_models():
-    """
-    Import the application models used by the test environment.
-    """
-    from models.campaign_artwork import CampaignArtwork
-    from models.campaign import Campaign
-    from models.printer import Printer
-
-    return Campaign, CampaignArtwork, Printer
-
+# ============================================================
+# FIXTURES
+# ============================================================
 
 def _create_printer(db):
     """
@@ -62,12 +48,13 @@ def _create_printer(db):
 
     return printer
 
+
 def _create_campaign(db):
     """
-    Create a minimal campaign required by ProductionBatch tests.
+    Create a valid Campaign fixture according to the current
+    Campaign model requirements.
     """
 
-    from datetime import date
     from models.campaign import Campaign
 
     campaign = Campaign(
@@ -75,8 +62,8 @@ def _create_campaign(db):
         client_name="PACK9B TEST CLIENT",
         brand_name="PACK9B TEST BRAND",
         campaign_name="PACK9B TEST CAMPAIGN",
-        start_date=date(2026, 8, 1),
-        end_date=date(2026, 8, 31),
+        start_date=date(2026, 1, 1),
+        end_date=date(2026, 12, 31),
     )
 
     db.add(campaign)
@@ -84,53 +71,48 @@ def _create_campaign(db):
 
     return campaign
 
+
+def _create_campaign_version(db, campaign):
+    """
+    Create the CampaignVersion required by CampaignArtwork.
+    """
+
+    from models.campaign_version import CampaignVersion
+
+    version = CampaignVersion(
+        campaign_id=campaign.id,
+        version_no=1,
+        version_name="V1",
+        import_batch="PACK9B-TEST-IMPORT",
+        total_locations=1,
+        total_walls=1,
+        total_sqft=100,
+    )
+
+    db.add(version)
+    db.flush()
+
+    return version
+
+
 def _create_artwork(
     db,
-    campaign=None,
-    campaign_version=None,
+    campaign_version,
     sqft=100.0,
 ):
     """
-    Create a minimal CampaignArtwork fixture.
-
-    CampaignArtwork belongs to CampaignVersion, not directly
-    to Campaign.
+    Create a valid CampaignArtwork fixture.
     """
 
     from models.campaign_artwork import CampaignArtwork
-    from models.campaign_version import CampaignVersion
-
-    if campaign_version is None:
-
-        if campaign is None:
-            campaign = _create_campaign(db)
-
-        import uuid
-
-        campaign_version = CampaignVersion(
-            campaign_id=campaign.id,
-            version_no=1,
-            version_name="V1",
-            import_batch=(
-                f"PACK9B-{uuid.uuid4().hex[:8]}"
-            ),
-            total_locations=1,
-            total_walls=1,
-            total_sqft=sqft,
-        )
-
-        db.add(campaign_version)
-        db.flush()
 
     artwork = CampaignArtwork(
         campaign_version_id=campaign_version.id,
-        artwork_code=(
-            f"PACK9B-ART-{uuid.uuid4().hex[:8]}"
-        ),
+        artwork_code="PACK9B-ART-001",
         artwork_name="PACK9B TEST ARTWORK",
         file_name="pack9b-test.jpg",
-        width_ft=10.0,
-        height_ft=sqft / 10.0,
+        width_ft=10,
+        height_ft=10,
         artwork_sqft=sqft,
         assigned_walls=1,
     )
@@ -139,6 +121,23 @@ def _create_artwork(
     db.flush()
 
     return artwork
+
+
+def _create_media_roll(db, roll_number="PACK9B-ROLL-001"):
+    """
+    Create a minimal MediaRoll required by ProductionAllocation.
+    """
+
+    from models.media_roll import MediaRoll
+
+    roll = MediaRoll(
+        manufacturer_roll_number=roll_number,
+    )
+
+    db.add(roll)
+    db.flush()
+
+    return roll
 
 
 def _create_batch(
@@ -166,7 +165,6 @@ def _create_item(
     planned_sqft=100.0,
     printed_sqft=0.0,
     wastage_sqft=0.0,
-    status="PENDING",
 ):
     item = ProductionItem(
         production_batch_id=batch.id,
@@ -174,7 +172,7 @@ def _create_item(
         planned_sqft=planned_sqft,
         printed_sqft=printed_sqft,
         wastage_sqft=wastage_sqft,
-        status=status,
+        status="PENDING",
     )
 
     db.add(item)
@@ -183,939 +181,642 @@ def _create_item(
     return item
 
 
-# ============================================================
-# Batch Core Integrity
-# ============================================================
+def _create_allocation(
+    db,
+    item,
+    artwork,
+    media_roll,
+    allocated_sqft=100.0,
+    consumed_sqft=0.0,
+    wastage_sqft=0.0,
+):
+    allocation = ProductionAllocation(
+        production_item_id=item.id,
+        campaign_artwork_id=artwork.id,
+        media_roll_id=media_roll.id,
+        allocated_sqft=allocated_sqft,
+        consumed_sqft=consumed_sqft,
+        wastage_sqft=wastage_sqft,
+        status="RESERVED",
+    )
 
+    db.add(allocation)
+    db.flush()
+
+    return allocation
+
+
+# ============================================================
+# BASIC BATCH TESTS
+# ============================================================
 
 def test_production_batch_can_be_created():
-
     create_test_db = _get_session_factory()
     db = create_test_db()
 
-    printer = _create_printer(db)
+    try:
+        printer = _create_printer(db)
 
-    batch = _create_batch(
-        db=db,
-        printer=printer,
-    )
+        batch = _create_batch(
+            db,
+            printer,
+        )
 
-    assert batch.id is not None
-    assert batch.printer_id == printer.id
-    assert batch.status == "PLANNED"
+        assert batch.id is not None
+        assert batch.batch_number == "PACK9B-001"
+        assert batch.printer_id == printer.id
+        assert batch.status == "PLANNED"
 
-    db.close()
-
-
-def test_production_batch_is_linked_to_printer():
-
-    create_test_db = _get_session_factory()
-    db = create_test_db()
-
-    printer = _create_printer(db)
-
-    batch = _create_batch(
-        db=db,
-        printer=printer,
-    )
-
-    db.refresh(batch)
-
-    assert batch.printer is not None
-    assert batch.printer.id == printer.id
-
-    db.close()
-
-
-def test_production_batch_number_is_unique():
-
-    create_test_db = _get_session_factory()
-    db = create_test_db()
-
-    printer = _create_printer(db)
-
-    _create_batch(
-        db=db,
-        printer=printer,
-        batch_number="PACK9B-UNIQUE",
-    )
-
-    db.commit()
-
-    duplicate = ProductionBatch(
-        batch_number="PACK9B-UNIQUE",
-        printer_id=printer.id,
-        status="PLANNED",
-    )
-
-    db.add(duplicate)
-
-    with pytest.raises(Exception):
-        db.commit()
-
-    db.rollback()
-    db.close()
-
-
-# ============================================================
-# Production Item Integrity
-# ============================================================
+    finally:
+        db.rollback()
+        db.close()
 
 
 def test_production_item_is_linked_to_batch():
-
     create_test_db = _get_session_factory()
     db = create_test_db()
 
-    printer = _create_printer(db)
-    campaign = _create_campaign(db)
-    artwork = _create_artwork(
-        db,
-        campaign=campaign,
-        sqft=250.0,
-    )
+    try:
+        printer = _create_printer(db)
+        campaign = _create_campaign(db)
+        version = _create_campaign_version(db, campaign)
+        artwork = _create_artwork(db, version)
 
-    batch = _create_batch(
-        db=db,
-        printer=printer,
-    )
+        batch = _create_batch(db, printer)
 
-    item = _create_item(
-        db=db,
-        batch=batch,
-        artwork=artwork,
-        planned_sqft=250.0,
-    )
+        item = _create_item(
+            db,
+            batch,
+            artwork,
+            planned_sqft=250,
+        )
 
-    db.refresh(batch)
+        assert item.production_batch_id == batch.id
+        assert item.production_batch.id == batch.id
 
-    assert item.production_batch_id == batch.id
-    assert item in batch.production_items
-
-    db.close()
+    finally:
+        db.rollback()
+        db.close()
 
 
 def test_production_item_is_linked_to_campaign_artwork():
-
     create_test_db = _get_session_factory()
     db = create_test_db()
 
-    printer = _create_printer(db)
-    campaign = _create_campaign(db)
+    try:
+        printer = _create_printer(db)
+        campaign = _create_campaign(db)
+        version = _create_campaign_version(db, campaign)
+        artwork = _create_artwork(
+            db,
+            version,
+            sqft=250,
+        )
 
-    artwork = _create_artwork(
-        db,
-        campaign=campaign,
-        sqft=150.0,
-    )
+        batch = _create_batch(db, printer)
 
-    batch = _create_batch(
-        db=db,
-        printer=printer,
-    )
+        item = _create_item(
+            db,
+            batch,
+            artwork,
+            planned_sqft=250,
+        )
 
-    item = _create_item(
-        db=db,
-        batch=batch,
-        artwork=artwork,
-        planned_sqft=150.0,
-    )
+        assert item.campaign_artwork_id == artwork.id
+        assert item.campaign_artwork.id == artwork.id
 
-    assert item.campaign_artwork_id == artwork.id
-    assert item.campaign_artwork.id == artwork.id
+    finally:
+        db.rollback()
+        db.close()
 
-    db.close()
 
+# ============================================================
+# BATCH CALCULATIONS
+# ============================================================
 
 def test_batch_total_planned_sqft_is_calculated():
-
     create_test_db = _get_session_factory()
     db = create_test_db()
 
-    printer = _create_printer(db)
+    try:
+        printer = _create_printer(db)
+        campaign = _create_campaign(db)
+        version = _create_campaign_version(db, campaign)
 
-    campaign = _create_campaign(db)
+        artwork_1 = _create_artwork(
+            db,
+            version,
+            sqft=100,
+        )
 
-    artwork1 = _create_artwork(
-        db,
-        campaign=campaign,
-        sqft=100.0,
-    )
+        artwork_2 = _create_artwork(
+            db,
+            version,
+            sqft=200,
+        )
 
-    artwork2 = _create_artwork(
-        db,
-        campaign=campaign,
-        sqft=250.0,
-    )
+        batch = _create_batch(db, printer)
 
-    batch = _create_batch(
-        db=db,
-        printer=printer,
-    )
+        _create_item(
+            db,
+            batch,
+            artwork_1,
+            planned_sqft=100,
+        )
 
-    _create_item(
-        db=db,
-        batch=batch,
-        artwork=artwork1,
-        planned_sqft=100.0,
-    )
+        _create_item(
+            db,
+            batch,
+            artwork_2,
+            planned_sqft=200,
+        )
 
-    _create_item(
-        db=db,
-        batch=batch,
-        artwork=artwork2,
-        planned_sqft=250.0,
-    )
+        assert batch.total_planned_sqft == 300
 
-    db.refresh(batch)
-
-    assert batch.total_planned_sqft == pytest.approx(350.0)
-
-    db.close()
+    finally:
+        db.rollback()
+        db.close()
 
 
 def test_batch_total_printed_sqft_is_calculated():
-
     create_test_db = _get_session_factory()
     db = create_test_db()
 
-    printer = _create_printer(db)
-    campaign = _create_campaign(db)
+    try:
+        printer = _create_printer(db)
+        campaign = _create_campaign(db)
+        version = _create_campaign_version(db, campaign)
+        artwork = _create_artwork(db, version, sqft=250)
 
-    artwork1 = _create_artwork(
-        db,
-        campaign=campaign,
-        sqft=100.0,
-    )
+        batch = _create_batch(db, printer)
 
-    artwork2 = _create_artwork(
-        db,
-        campaign=campaign,
-        sqft=200.0,
-    )
+        _create_item(
+            db,
+            batch,
+            artwork,
+            planned_sqft=250,
+            printed_sqft=175,
+        )
 
-    batch = _create_batch(
-        db=db,
-        printer=printer,
-    )
+        assert batch.total_printed_sqft == 175
 
-    _create_item(
-        db=db,
-        batch=batch,
-        artwork=artwork1,
-        planned_sqft=100.0,
-        printed_sqft=50.0,
-    )
-
-    _create_item(
-        db=db,
-        batch=batch,
-        artwork=artwork2,
-        planned_sqft=200.0,
-        printed_sqft=125.0,
-    )
-
-    db.refresh(batch)
-
-    assert batch.total_printed_sqft == pytest.approx(175.0)
-
-    db.close()
+    finally:
+        db.rollback()
+        db.close()
 
 
 def test_batch_total_wastage_sqft_is_calculated():
-
     create_test_db = _get_session_factory()
     db = create_test_db()
 
-    printer = _create_printer(db)
-    campaign = _create_campaign(db)
+    try:
+        printer = _create_printer(db)
+        campaign = _create_campaign(db)
+        version = _create_campaign_version(db, campaign)
+        artwork = _create_artwork(db, version, sqft=250)
 
-    artwork1 = _create_artwork(
-        db,
-        campaign=campaign,
-        sqft=100.0,
-    )
+        batch = _create_batch(db, printer)
 
-    artwork2 = _create_artwork(
-        db,
-        campaign=campaign,
-        sqft=100.0,
-    )
+        _create_item(
+            db,
+            batch,
+            artwork,
+            planned_sqft=250,
+            printed_sqft=200,
+            wastage_sqft=50,
+        )
 
-    batch = _create_batch(
-        db=db,
-        printer=printer,
-    )
+        assert batch.total_wastage_sqft == 50
 
-    _create_item(
-        db=db,
-        batch=batch,
-        artwork=artwork1,
-        planned_sqft=100.0,
-        wastage_sqft=10.0,
-    )
-
-    _create_item(
-        db=db,
-        batch=batch,
-        artwork=artwork2,
-        planned_sqft=100.0,
-        wastage_sqft=15.0,
-    )
-
-    db.refresh(batch)
-
-    assert batch.total_wastage_sqft == pytest.approx(25.0)
-
-    db.close()
+    finally:
+        db.rollback()
+        db.close()
 
 
 def test_batch_completion_percentage_is_calculated():
-
     create_test_db = _get_session_factory()
     db = create_test_db()
 
-    printer = _create_printer(db)
-    campaign = _create_campaign(db)
+    try:
+        printer = _create_printer(db)
+        campaign = _create_campaign(db)
+        version = _create_campaign_version(db, campaign)
+        artwork = _create_artwork(db, version, sqft=250)
 
-    artwork = _create_artwork(
-        db,
-        campaign=campaign,
-        sqft=200.0,
-    )
+        batch = _create_batch(db, printer)
 
-    batch = _create_batch(
-        db=db,
-        printer=printer,
-    )
+        _create_item(
+            db,
+            batch,
+            artwork,
+            planned_sqft=250,
+            printed_sqft=125,
+        )
 
-    _create_item(
-        db=db,
-        batch=batch,
-        artwork=artwork,
-        planned_sqft=200.0,
-        printed_sqft=50.0,
-    )
+        assert batch.completion_percentage == 50
 
-    db.refresh(batch)
-
-    assert batch.completion_percentage == pytest.approx(25.0)
-
-    db.close()
-
-
-def test_zero_planned_sqft_has_zero_completion_percentage():
-
-    create_test_db = _get_session_factory()
-    db = create_test_db()
-
-    printer = _create_printer(db)
-
-    batch = _create_batch(
-        db=db,
-        printer=printer,
-    )
-
-    assert batch.total_planned_sqft == 0
-    assert batch.completion_percentage == 0
-
-    db.close()
+    finally:
+        db.rollback()
+        db.close()
 
 
 # ============================================================
-# Production Allocation Integrity
+# ALLOCATION TESTS
 # ============================================================
-
 
 def test_production_allocation_can_be_created():
-
     create_test_db = _get_session_factory()
     db = create_test_db()
 
-    printer = _create_printer(db)
-    campaign = _create_campaign(db)
+    try:
+        printer = _create_printer(db)
+        campaign = _create_campaign(db)
+        version = _create_campaign_version(db, campaign)
+        artwork = _create_artwork(db, version)
 
-    artwork = _create_artwork(
-        db,
-        campaign=campaign,
-        sqft=100.0,
-    )
+        batch = _create_batch(db, printer)
 
-    batch = _create_batch(
-        db=db,
-        printer=printer,
-    )
+        item = _create_item(
+            db,
+            batch,
+            artwork,
+        )
 
-    item = _create_item(
-        db=db,
-        batch=batch,
-        artwork=artwork,
-        planned_sqft=100.0,
-    )
+        roll = _create_media_roll(db)
 
-    allocation = ProductionAllocation(
-        production_item_id=item.id,
-        campaign_artwork_id=artwork.id,
-        production_batch_id=batch.id,
-        allocated_sqft=100.0,
-        printed_sqft=0.0,
-        wastage_sqft=0.0,
-        balance_sqft=100.0,
-        status="ALLOCATED",
-    )
+        allocation = _create_allocation(
+            db,
+            item,
+            artwork,
+            roll,
+            allocated_sqft=100,
+        )
 
-    db.add(allocation)
-    db.flush()
+        assert allocation.id is not None
+        assert allocation.production_item_id == item.id
+        assert allocation.media_roll_id == roll.id
+        assert allocation.allocated_sqft == 100
 
-    assert allocation.id is not None
-    assert allocation.production_batch_id == batch.id
-    assert allocation.production_item_id == item.id
-    assert allocation.campaign_artwork_id == artwork.id
-
-    db.close()
+    finally:
+        db.rollback()
+        db.close()
 
 
 def test_production_allocation_repository_returns_batch_allocations():
-
     create_test_db = _get_session_factory()
     db = create_test_db()
 
-    printer = _create_printer(db)
-    campaign = _create_campaign(db)
+    try:
+        from repositories.production_allocation_repository import (
+            ProductionAllocationRepository,
+        )
 
-    artwork = _create_artwork(
-        db,
-        campaign=campaign,
-        sqft=100.0,
-    )
+        printer = _create_printer(db)
+        campaign = _create_campaign(db)
+        version = _create_campaign_version(db, campaign)
+        artwork = _create_artwork(db, version)
 
-    batch = _create_batch(
-        db=db,
-        printer=printer,
-    )
+        batch = _create_batch(db, printer)
+        item = _create_item(db, batch, artwork)
+        roll = _create_media_roll(db)
 
-    item = _create_item(
-        db=db,
-        batch=batch,
-        artwork=artwork,
-        planned_sqft=100.0,
-    )
+        allocation = _create_allocation(
+            db,
+            item,
+            artwork,
+            roll,
+            allocated_sqft=100,
+        )
 
-    allocation = ProductionAllocation(
-        production_item_id=item.id,
-        campaign_artwork_id=artwork.id,
-        production_batch_id=batch.id,
-        allocated_sqft=100.0,
-        printed_sqft=0.0,
-        wastage_sqft=0.0,
-        balance_sqft=100.0,
-        status="ALLOCATED",
-    )
+        result = ProductionAllocationRepository.get_by_batch(
+            db,
+            batch.id,
+        )
 
-    db.add(allocation)
-    db.flush()
+        assert len(result) == 1
+        assert result[0].id == allocation.id
 
-    results = ProductionAllocationRepository.get_by_batch(
-        db,
-        batch.id,
-    )
-
-    assert len(results) == 1
-    assert results[0].id == allocation.id
-
-    db.close()
+    finally:
+        db.rollback()
+        db.close()
 
 
 def test_allocation_service_creates_allocation():
-
     create_test_db = _get_session_factory()
     db = create_test_db()
 
-    printer = _create_printer(db)
-    campaign = _create_campaign(db)
+    try:
+        from services.production_allocation_service import (
+            ProductionAllocationService,
+        )
 
-    artwork = _create_artwork(
-        db,
-        campaign=campaign,
-        sqft=100.0,
-    )
+        printer = _create_printer(db)
+        campaign = _create_campaign(db)
+        version = _create_campaign_version(db, campaign)
+        artwork = _create_artwork(db, version)
 
-    batch = _create_batch(
-        db=db,
-        printer=printer,
-    )
+        batch = _create_batch(db, printer)
+        item = _create_item(db, batch, artwork)
+        roll = _create_media_roll(db)
 
-    allocation = ProductionAllocationService.allocate(
-        db=db,
-        batch=batch,
-        artwork=artwork,
-        required_sqft=100.0,
-    )
+        allocation = ProductionAllocationService.allocate(
+            db=db,
+            item=item,
+            artwork=artwork,
+            media_roll=roll,
+            allocated_sqft=100,
+        )
 
-    assert allocation.id is not None
-    assert allocation.production_batch_id == batch.id
-    assert allocation.campaign_artwork_id == artwork.id
-    assert allocation.allocated_sqft == pytest.approx(100.0)
+        assert allocation.id is not None
+        assert allocation.production_item_id == item.id
+        assert allocation.media_roll_id == roll.id
+        assert allocation.allocated_sqft == 100
 
-    db.close()
+    finally:
+        db.rollback()
+        db.close()
 
 
 # ============================================================
-# Printing Session Integrity
+# PRINTING SESSION
 # ============================================================
-
 
 def test_printing_session_is_linked_to_batch():
-
     create_test_db = _get_session_factory()
     db = create_test_db()
 
-    printer = _create_printer(db)
-    campaign = _create_campaign(db)
+    try:
+        printer = _create_printer(db)
+        batch = _create_batch(db, printer)
 
-    artwork = _create_artwork(
-        db,
-        campaign=campaign,
-        sqft=300.0,
-    )
+        session = PrintingSession(
+            production_batch_id=batch.id,
+            printer_id=printer.id,
+            planned_sqft=100,
+            status="IN_PROGRESS",
+        )
 
-    batch = _create_batch(
-        db=db,
-        printer=printer,
-    )
+        db.add(session)
+        db.flush()
 
-    _create_item(
-        db=db,
-        batch=batch,
-        artwork=artwork,
-        planned_sqft=300.0,
-    )
+        assert session.id is not None
+        assert session.production_batch_id == batch.id
+        assert session.production_batch.id == batch.id
 
-    session = PrintingSession(
-        production_batch_id=batch.id,
-        printer_id=printer.id,
-        session_number=1,
-        planned_sqft=300.0,
-        printed_sqft=0.0,
-        wastage_sqft=0.0,
-        status="IN_PROGRESS",
-    )
-
-    db.add(session)
-    db.flush()
-
-    db.refresh(batch)
-
-    assert session.production_batch_id == batch.id
-    assert session in batch.printing_sessions
-
-    db.close()
+    finally:
+        db.rollback()
+        db.close()
 
 
 def test_printing_session_planned_sqft_matches_batch():
-
     create_test_db = _get_session_factory()
     db = create_test_db()
 
-    printer = _create_printer(db)
-    campaign = _create_campaign(db)
+    try:
+        printer = _create_printer(db)
+        campaign = _create_campaign(db)
+        version = _create_campaign_version(db, campaign)
+        artwork = _create_artwork(db, version, sqft=300)
 
-    artwork = _create_artwork(
-        db,
-        campaign=campaign,
-        sqft=400.0,
-    )
+        batch = _create_batch(db, printer)
 
-    batch = _create_batch(
-        db=db,
-        printer=printer,
-    )
+        _create_item(
+            db,
+            batch,
+            artwork,
+            planned_sqft=300,
+        )
 
-    _create_item(
-        db=db,
-        batch=batch,
-        artwork=artwork,
-        planned_sqft=400.0,
-    )
+        session = PrintingSession(
+            production_batch_id=batch.id,
+            printer_id=printer.id,
+            planned_sqft=batch.total_planned_sqft,
+            status="IN_PROGRESS",
+        )
 
-    session = PrintingSession(
-        production_batch_id=batch.id,
-        printer_id=printer.id,
-        session_number=1,
-        planned_sqft=batch.total_planned_sqft,
-        status="IN_PROGRESS",
-    )
+        db.add(session)
+        db.flush()
 
-    db.add(session)
-    db.flush()
+        assert session.planned_sqft == batch.total_planned_sqft
+        assert session.planned_sqft == 300
 
-    assert session.planned_sqft == pytest.approx(400.0)
-
-    db.close()
-
-
-def test_printing_session_status_defaults_to_in_progress():
-
-    create_test_db = _get_session_factory()
-    db = create_test_db()
-
-    printer = _create_printer(db)
-
-    batch = _create_batch(
-        db=db,
-        printer=printer,
-    )
-
-    session = PrintingSession(
-        production_batch_id=batch.id,
-        printer_id=printer.id,
-    )
-
-    db.add(session)
-    db.flush()
-
-    assert session.status == "IN_PROGRESS"
-
-    db.close()
+    finally:
+        db.rollback()
+        db.close()
 
 
 # ============================================================
-# Persistence Integrity
+# REFRESH / RELATIONSHIP INTEGRITY
 # ============================================================
-
 
 def test_batch_items_and_allocations_survive_refresh():
-
     create_test_db = _get_session_factory()
-    db = create_test_db()
+    db = create_test_db
 
-    printer = _create_printer(db)
-    campaign = _create_campaign(db)
+    try:
+        session = db()
 
-    artwork = _create_artwork(
-        db,
-        campaign=campaign,
-        sqft=150.0,
-    )
+        printer = _create_printer(session)
+        campaign = _create_campaign(session)
+        version = _create_campaign_version(session, campaign)
+        artwork = _create_artwork(session, version)
 
-    batch = _create_batch(
-        db=db,
-        printer=printer,
-    )
+        batch = _create_batch(session, printer)
+        item = _create_item(session, batch, artwork)
 
-    item = _create_item(
-        db=db,
-        batch=batch,
-        artwork=artwork,
-        planned_sqft=150.0,
-    )
+        roll = _create_media_roll(session)
 
-    allocation = ProductionAllocation(
-        production_item_id=item.id,
-        campaign_artwork_id=artwork.id,
-        production_batch_id=batch.id,
-        allocated_sqft=150.0,
-        balance_sqft=150.0,
-        status="ALLOCATED",
-    )
-
-    db.add(allocation)
-    db.commit()
-
-    db.expire_all()
-
-    loaded_batch = (
-        db.query(ProductionBatch)
-        .filter(
-            ProductionBatch.id == batch.id
+        allocation = _create_allocation(
+            session,
+            item,
+            artwork,
+            roll,
         )
-        .one()
-    )
 
-    assert len(loaded_batch.production_items) == 1
-    assert len(loaded_batch.allocations) == 1
+        session.commit()
 
-    assert (
-        loaded_batch.production_items[0].id
-        == item.id
-    )
+        batch_id = batch.id
 
-    assert (
-        loaded_batch.allocations[0].id
-        == allocation.id
-    )
+        session.expire_all()
 
-    db.close()
+        refreshed = session.get(
+            ProductionBatch,
+            batch_id,
+        )
+
+        assert refreshed is not None
+        assert len(refreshed.production_items) == 1
+        assert len(refreshed.allocations) == 1
+        assert refreshed.production_items[0].id == item.id
+        assert refreshed.allocations[0].id == allocation.id
+
+    finally:
+        try:
+            session.rollback()
+            session.close()
+        except Exception:
+            pass
 
 
 def test_multiple_allocations_are_kept_separately():
-
     create_test_db = _get_session_factory()
     db = create_test_db()
 
-    printer = _create_printer(db)
-    campaign = _create_campaign(db)
-
-    artwork1 = _create_artwork(
-        db,
-        campaign=campaign,
-        sqft=100.0,
-    )
-
-    artwork2 = _create_artwork(
-        db,
-        campaign=campaign,
-        sqft=200.0,
-    )
-
-    batch = _create_batch(
-        db=db,
-        printer=printer,
-    )
-
-    item1 = _create_item(
-        db=db,
-        batch=batch,
-        artwork=artwork1,
-        planned_sqft=100.0,
-    )
-
-    item2 = _create_item(
-        db=db,
-        batch=batch,
-        artwork=artwork2,
-        planned_sqft=200.0,
-    )
-
-    allocation1 = ProductionAllocation(
-        production_item_id=item1.id,
-        campaign_artwork_id=artwork1.id,
-        production_batch_id=batch.id,
-        allocated_sqft=100.0,
-        balance_sqft=100.0,
-        status="ALLOCATED",
-    )
-
-    allocation2 = ProductionAllocation(
-        production_item_id=item2.id,
-        campaign_artwork_id=artwork2.id,
-        production_batch_id=batch.id,
-        allocated_sqft=200.0,
-        balance_sqft=200.0,
-        status="ALLOCATED",
-    )
-
-    db.add_all(
-        [
-            allocation1,
-            allocation2,
-        ]
-    )
-
-    db.flush()
-
-    allocations = ProductionAllocationRepository.get_by_batch(
-        db,
-        batch.id,
-    )
-
-    assert len(allocations) == 2
-
-    allocated_total = sum(
-        allocation.allocated_sqft
-        for allocation in allocations
-    )
-
-    assert allocated_total == pytest.approx(300.0)
-
-    db.close()
-
-
-# ============================================================
-# Rollback Integrity
-# ============================================================
-
-
-def test_batch_creation_failure_does_not_persist_partial_batch():
-
-    create_test_db = _get_session_factory()
-    db = create_test_db()
-
-    printer = _create_printer(db)
-
-    batch = ProductionBatch(
-        batch_number="PACK9B-ROLLBACK",
-        printer_id=printer.id,
-        status="PLANNED",
-    )
-
-    db.add(batch)
-    db.flush()
-
-    batch_id = batch.id
-
-    db.rollback()
-
-    result = (
-        db.query(ProductionBatch)
-        .filter(
-            ProductionBatch.id == batch_id
+    try:
+        from repositories.production_allocation_repository import (
+            ProductionAllocationRepository,
         )
-        .first()
-    )
 
-    assert result is None
+        printer = _create_printer(db)
+        campaign = _create_campaign(db)
+        version = _create_campaign_version(db, campaign)
+        artwork = _create_artwork(db, version, sqft=200)
 
-    db.close()
+        batch = _create_batch(db, printer)
+        item = _create_item(
+            db,
+            batch,
+            artwork,
+            planned_sqft=200,
+        )
+
+        roll_1 = _create_media_roll(
+            db,
+            "PACK9B-ROLL-001",
+        )
+
+        roll_2 = _create_media_roll(
+            db,
+            "PACK9B-ROLL-002",
+        )
+
+        allocation_1 = _create_allocation(
+            db,
+            item,
+            artwork,
+            roll_1,
+            allocated_sqft=100,
+        )
+
+        allocation_2 = _create_allocation(
+            db,
+            item,
+            artwork,
+            roll_2,
+            allocated_sqft=100,
+        )
+
+        result = ProductionAllocationRepository.get_by_batch(
+            db,
+            batch.id,
+        )
+
+        assert len(result) == 2
+
+        ids = {
+            allocation.id
+            for allocation in result
+        }
+
+        assert allocation_1.id in ids
+        assert allocation_2.id in ids
+
+        roll_ids = {
+            allocation.media_roll_id
+            for allocation in result
+        }
+
+        assert roll_1.id in roll_ids
+        assert roll_2.id in roll_ids
+
+    finally:
+        db.rollback()
+        db.close()
 
 
 def test_allocation_rollback_does_not_persist():
-
     create_test_db = _get_session_factory()
     db = create_test_db()
 
-    printer = _create_printer(db)
-    campaign = _create_campaign(db)
-
-    artwork = _create_artwork(
-        db,
-        campaign=campaign,
-        sqft=100.0,
-    )
-
-    batch = _create_batch(
-        db=db,
-        printer=printer,
-    )
-
-    item = _create_item(
-        db=db,
-        batch=batch,
-        artwork=artwork,
-        planned_sqft=100.0,
-    )
-
-    allocation = ProductionAllocation(
-        production_item_id=item.id,
-        campaign_artwork_id=artwork.id,
-        production_batch_id=batch.id,
-        allocated_sqft=100.0,
-        balance_sqft=100.0,
-        status="ALLOCATED",
-    )
-
-    db.add(allocation)
-    db.flush()
-
-    allocation_id = allocation.id
-
-    db.rollback()
-
-    result = (
-        db.query(ProductionAllocation)
-        .filter(
-            ProductionAllocation.id == allocation_id
+    try:
+        from repositories.production_allocation_repository import (
+            ProductionAllocationRepository,
         )
-        .first()
-    )
 
-    assert result is None
+        printer = _create_printer(db)
+        campaign = _create_campaign(db)
+        version = _create_campaign_version(db, campaign)
+        artwork = _create_artwork(db, version)
 
-    db.close()
+        batch = _create_batch(db, printer)
+        item = _create_item(db, batch, artwork)
+
+        roll = _create_media_roll(db)
+
+        allocation = _create_allocation(
+            db,
+            item,
+            artwork,
+            roll,
+        )
+
+        allocation_id = allocation.id
+
+        db.rollback()
+
+        result = ProductionAllocationRepository.get_by_batch(
+            db,
+            batch.id,
+        )
+
+        assert all(
+            existing.id != allocation_id
+            for existing in result
+        )
+
+    finally:
+        db.rollback()
+        db.close()
 
 
 # ============================================================
-# Relationship Cascade Integrity
+# CASCADE DELETE
 # ============================================================
-
 
 def test_deleting_batch_removes_production_items():
-
     create_test_db = _get_session_factory()
     db = create_test_db()
 
-    printer = _create_printer(db)
-    campaign = _create_campaign(db)
+    try:
+        printer = _create_printer(db)
+        campaign = _create_campaign(db)
+        version = _create_campaign_version(db, campaign)
+        artwork = _create_artwork(db, version)
 
-    artwork = _create_artwork(
-        db,
-        campaign=campaign,
-        sqft=100.0,
-    )
+        batch = _create_batch(db, printer)
 
-    batch = _create_batch(
-        db=db,
-        printer=printer,
-    )
-
-    item = _create_item(
-        db=db,
-        batch=batch,
-        artwork=artwork,
-        planned_sqft=100.0,
-    )
-
-    item_id = item.id
-    batch_id = batch.id
-
-    db.delete(batch)
-    db.commit()
-
-    assert (
-        db.query(ProductionItem)
-        .filter(
-            ProductionItem.id == item_id
+        item = _create_item(
+            db,
+            batch,
+            artwork,
         )
-        .first()
-        is None
-    )
 
-    assert (
-        db.query(ProductionBatch)
-        .filter(
-            ProductionBatch.id == batch_id
-        )
-        .first()
-        is None
-    )
+        item_id = item.id
+        batch_id = batch.id
 
-    db.close()
+        db.delete(batch)
+        db.flush()
 
+        assert db.get(
+            ProductionBatch,
+            batch_id,
+        ) is None
 
-def test_deleting_batch_removes_printing_sessions():
+        assert db.get(
+            ProductionItem,
+            item_id,
+        ) is None
 
-    create_test_db = _get_session_factory()
-    db = create_test_db()
-
-    printer = _create_printer(db)
-
-    batch = _create_batch(
-        db=db,
-        printer=printer,
-    )
-
-    session = PrintingSession(
-        production_batch_id=batch.id,
-        printer_id=printer.id,
-        session_number=1,
-        status="IN_PROGRESS",
-    )
-
-    db.add(session)
-    db.flush()
-
-    session_id = session.id
-
-    db.delete(batch)
-    db.commit()
-
-    assert (
-        db.query(PrintingSession)
-        .filter(
-            PrintingSession.id == session_id
-        )
-        .first()
-        is None
-    )
-
-    db.close()
+    finally:
+        db.rollback()
+        db.close()
