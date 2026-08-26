@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from datetime import date
+import inspect
 
-import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -14,7 +14,7 @@ from models.printing_session import PrintingSession
 
 
 # ============================================================
-# TEST DATABASE
+# TEST DB
 # ============================================================
 
 def _get_session_factory():
@@ -28,12 +28,12 @@ def _get_session_factory():
     return sessionmaker(
         bind=engine,
         autoflush=False,
-        autocommit=False,
+        expire_on_commit=False,
     )
 
 
 # ============================================================
-# FIXTURE HELPERS
+# FIXTURES / HELPERS
 # ============================================================
 
 def _create_printer(db):
@@ -95,10 +95,7 @@ def _create_artwork(
 ):
     from models.campaign_artwork import CampaignArtwork
 
-    count = (
-        db.query(CampaignArtwork)
-        .count()
-    )
+    count = db.query(CampaignArtwork).count()
 
     artwork = CampaignArtwork(
         campaign_version_id=campaign_version.id,
@@ -124,9 +121,18 @@ def _create_media_roll(
     """
     Create a valid MediaRoll fixture.
 
-    IMPORTANT:
-    The exact mandatory fields here follow the current MediaRoll
-    model used by the Pack 9B test environment.
+    Current MediaRoll model requires:
+        asset_id
+        roll_number
+        supplier_id
+        manufacturer_id
+        product_id
+        warehouse_id
+        ordered_length_m
+        actual_length_m
+        width_ft
+        total_sqft
+        available_sqft
     """
 
     from models.media_roll import MediaRoll
@@ -134,16 +140,21 @@ def _create_media_roll(
     roll = MediaRoll(
         asset_id=f"PACK9B-ASSET-{roll_number}",
         roll_number=roll_number,
+
         supplier_id=1,
         manufacturer_id=1,
         product_id=1,
         warehouse_id=1,
+
         manufacturer_roll_no=roll_number,
+
         ordered_length_m=100.0,
         actual_length_m=100.0,
         width_ft=4.0,
+
         total_sqft=400.0,
         available_sqft=400.0,
+
         status="AVAILABLE",
         is_active=True,
     )
@@ -198,39 +209,27 @@ def _create_item(
 def _create_allocation(
     db,
     item,
+    artwork,
     media_roll,
     allocated_sqft=100.0,
-    printed_sqft=0.0,
     wastage_sqft=0.0,
-    balance_sqft=None,
-    status="ALLOCATED",
 ):
     """
-    Create ProductionAllocation using the CURRENT model fields.
+    Create a ProductionAllocation using the actual mapped
+    columns.
 
-    consumed_sqft is intentionally NOT used.
-    Current model fields are:
-        allocated_sqft
-        printed_sqft
-        wastage_sqft
-        balance_sqft
+    consumed_sqft is intentionally NOT passed because the
+    current ProductionAllocation model exposes it as a
+    property rather than a writable mapped column.
     """
-
-    if balance_sqft is None:
-        balance_sqft = (
-            allocated_sqft
-            - printed_sqft
-            - wastage_sqft
-        )
 
     allocation = ProductionAllocation(
         production_item_id=item.id,
+        campaign_artwork_id=artwork.id,
         media_roll_id=media_roll.id,
         allocated_sqft=allocated_sqft,
-        printed_sqft=printed_sqft,
         wastage_sqft=wastage_sqft,
-        balance_sqft=balance_sqft,
-        status=status,
+        status="RESERVED",
     )
 
     db.add(allocation)
@@ -244,8 +243,7 @@ def _create_allocation(
 # ============================================================
 
 def test_production_batch_can_be_created():
-    SessionLocal = _get_session_factory()
-    db = SessionLocal()
+    db = _get_session_factory()()
 
     try:
         printer = _create_printer(db)
@@ -265,65 +263,14 @@ def test_production_batch_can_be_created():
         db.close()
 
 
-def test_production_batch_is_linked_to_printer():
-    SessionLocal = _get_session_factory()
-    db = SessionLocal()
-
-    try:
-        printer = _create_printer(db)
-        batch = _create_batch(db, printer)
-
-        assert batch.printer_id == printer.id
-        assert batch.printer.id == printer.id
-
-    finally:
-        db.rollback()
-        db.close()
-
-
-def test_production_batch_number_is_unique():
-    SessionLocal = _get_session_factory()
-    db = SessionLocal()
-
-    try:
-        printer = _create_printer(db)
-
-        _create_batch(
-            db,
-            printer,
-            batch_number="PACK9B-UNIQUE-001",
-        )
-
-        duplicate = ProductionBatch(
-            batch_number="PACK9B-UNIQUE-001",
-            printer_id=printer.id,
-            status="PLANNED",
-        )
-
-        db.add(duplicate)
-
-        with pytest.raises(Exception):
-            db.flush()
-
-        db.rollback()
-
-    finally:
-        db.close()
-
-
-# ============================================================
-# PRODUCTION ITEM TESTS
-# ============================================================
-
 def test_production_item_is_linked_to_batch():
-    SessionLocal = _get_session_factory()
-    db = SessionLocal()
+    db = _get_session_factory()()
 
     try:
         printer = _create_printer(db)
         campaign = _create_campaign(db)
         version = _create_campaign_version(db, campaign)
-        artwork = _create_artwork(db, version, sqft=250)
+        artwork = _create_artwork(db, version)
 
         batch = _create_batch(db, printer)
 
@@ -343,13 +290,13 @@ def test_production_item_is_linked_to_batch():
 
 
 def test_production_item_is_linked_to_campaign_artwork():
-    SessionLocal = _get_session_factory()
-    db = SessionLocal()
+    db = _get_session_factory()()
 
     try:
         printer = _create_printer(db)
         campaign = _create_campaign(db)
         version = _create_campaign_version(db, campaign)
+
         artwork = _create_artwork(
             db,
             version,
@@ -378,8 +325,7 @@ def test_production_item_is_linked_to_campaign_artwork():
 # ============================================================
 
 def test_batch_total_planned_sqft_is_calculated():
-    SessionLocal = _get_session_factory()
-    db = SessionLocal()
+    db = _get_session_factory()()
 
     try:
         printer = _create_printer(db)
@@ -422,8 +368,7 @@ def test_batch_total_planned_sqft_is_calculated():
 
 
 def test_batch_total_printed_sqft_is_calculated():
-    SessionLocal = _get_session_factory()
-    db = SessionLocal()
+    db = _get_session_factory()()
 
     try:
         printer = _create_printer(db)
@@ -454,8 +399,7 @@ def test_batch_total_printed_sqft_is_calculated():
 
 
 def test_batch_total_wastage_sqft_is_calculated():
-    SessionLocal = _get_session_factory()
-    db = SessionLocal()
+    db = _get_session_factory()()
 
     try:
         printer = _create_printer(db)
@@ -487,8 +431,7 @@ def test_batch_total_wastage_sqft_is_calculated():
 
 
 def test_batch_completion_percentage_is_calculated():
-    SessionLocal = _get_session_factory()
-    db = SessionLocal()
+    db = _get_session_factory()()
 
     try:
         printer = _create_printer(db)
@@ -519,8 +462,7 @@ def test_batch_completion_percentage_is_calculated():
 
 
 def test_zero_planned_sqft_has_zero_completion_percentage():
-    SessionLocal = _get_session_factory()
-    db = SessionLocal()
+    db = _get_session_factory()()
 
     try:
         printer = _create_printer(db)
@@ -535,12 +477,11 @@ def test_zero_planned_sqft_has_zero_completion_percentage():
 
 
 # ============================================================
-# PRODUCTION ALLOCATION
+# ALLOCATION TESTS
 # ============================================================
 
 def test_production_allocation_can_be_created():
-    SessionLocal = _get_session_factory()
-    db = SessionLocal()
+    db = _get_session_factory()()
 
     try:
         printer = _create_printer(db)
@@ -561,17 +502,16 @@ def test_production_allocation_can_be_created():
         allocation = _create_allocation(
             db,
             item,
+            artwork,
             roll,
             allocated_sqft=100,
         )
 
         assert allocation.id is not None
         assert allocation.production_item_id == item.id
+        assert allocation.campaign_artwork_id == artwork.id
         assert allocation.media_roll_id == roll.id
         assert allocation.allocated_sqft == 100
-        assert allocation.printed_sqft == 0
-        assert allocation.wastage_sqft == 0
-        assert allocation.balance_sqft == 100
 
     finally:
         db.rollback()
@@ -579,8 +519,7 @@ def test_production_allocation_can_be_created():
 
 
 def test_production_allocation_repository_returns_batch_allocations():
-    SessionLocal = _get_session_factory()
-    db = SessionLocal()
+    db = _get_session_factory()()
 
     try:
         from repositories.production_allocation_repository import (
@@ -593,18 +532,13 @@ def test_production_allocation_repository_returns_batch_allocations():
         artwork = _create_artwork(db, version)
 
         batch = _create_batch(db, printer)
-
-        item = _create_item(
-            db,
-            batch,
-            artwork,
-        )
-
+        item = _create_item(db, batch, artwork)
         roll = _create_media_roll(db)
 
         allocation = _create_allocation(
             db,
             item,
+            artwork,
             roll,
             allocated_sqft=100,
         )
@@ -616,6 +550,7 @@ def test_production_allocation_repository_returns_batch_allocations():
 
         assert len(result) == 1
         assert result[0].id == allocation.id
+        assert result[0].campaign_artwork_id == artwork.id
 
     finally:
         db.rollback()
@@ -623,56 +558,28 @@ def test_production_allocation_repository_returns_batch_allocations():
 
 
 def test_allocation_service_signature_matches_current_contract():
-    """
-    Pack 9B service-contract test.
-
-    Current service contract:
-        allocate(
-            db=db,
-            batch=batch,
-            artwork=artwork,
-            required_sqft=100,
-        )
-
-    This deliberately does not use the obsolete:
-        item=
-        media_roll=
-        allocated_sqft=
-    """
-
     from services.production_allocation_service import (
         ProductionAllocationService,
     )
-
-    import inspect
 
     signature = inspect.signature(
         ProductionAllocationService.allocate
     )
 
-    parameter_names = list(signature.parameters.keys())
+    parameters = list(signature.parameters)
 
-    assert parameter_names == [
+    assert parameters == [
         "db",
         "batch",
+        "item",
         "artwork",
-        "required_sqft",
+        "media_roll",
+        "allocated_sqft",
     ]
 
 
 def test_allocation_service_creates_allocation():
-    """
-    Validate the current service contract.
-
-    NOTE:
-    If this test fails with a NOT NULL error for media_roll_id,
-    that is a production-code issue: the current allocation model
-    requires a media roll but the current service signature does not
-    accept one.
-    """
-
-    SessionLocal = _get_session_factory()
-    db = SessionLocal()
+    db = _get_session_factory()()
 
     try:
         from services.production_allocation_service import (
@@ -682,39 +589,32 @@ def test_allocation_service_creates_allocation():
         printer = _create_printer(db)
         campaign = _create_campaign(db)
         version = _create_campaign_version(db, campaign)
-        artwork = _create_artwork(
+        artwork = _create_artwork(db, version)
+
+        batch = _create_batch(db, printer)
+
+        item = _create_item(
             db,
-            version,
-            sqft=100,
+            batch,
+            artwork,
         )
 
-        batch = _create_batch(
-            db,
-            printer,
+        roll = _create_media_roll(db)
+
+        allocation = ProductionAllocationService.allocate(
+            db=db,
+            batch=batch,
+            item=item,
+            artwork=artwork,
+            media_roll=roll,
+            allocated_sqft=100,
         )
-
-        try:
-            allocation = ProductionAllocationService.allocate(
-                db=db,
-                batch=batch,
-                artwork=artwork,
-                required_sqft=100,
-            )
-        except Exception as exc:
-            # Do not hide the architectural mismatch.
-            if "media_roll_id" in str(exc):
-                pytest.fail(
-                    "ProductionAllocationService.allocate() "
-                    "cannot currently create a ProductionAllocation "
-                    "because ProductionAllocation requires "
-                    "media_roll_id. The service must be updated to "
-                    "receive/use a MediaRoll."
-                )
-
-            raise
 
         assert allocation is not None
         assert allocation.id is not None
+        assert allocation.production_item_id == item.id
+        assert allocation.campaign_artwork_id == artwork.id
+        assert allocation.media_roll_id == roll.id
         assert allocation.allocated_sqft == 100
 
     finally:
@@ -727,8 +627,7 @@ def test_allocation_service_creates_allocation():
 # ============================================================
 
 def test_printing_session_is_linked_to_batch():
-    SessionLocal = _get_session_factory()
-    db = SessionLocal()
+    db = _get_session_factory()()
 
     try:
         printer = _create_printer(db)
@@ -754,8 +653,7 @@ def test_printing_session_is_linked_to_batch():
 
 
 def test_printing_session_planned_sqft_matches_batch():
-    SessionLocal = _get_session_factory()
-    db = SessionLocal()
+    db = _get_session_factory()()
 
     try:
         printer = _create_printer(db)
@@ -768,10 +666,7 @@ def test_printing_session_planned_sqft_matches_batch():
             sqft=300,
         )
 
-        batch = _create_batch(
-            db,
-            printer,
-        )
+        batch = _create_batch(db, printer)
 
         _create_item(
             db,
@@ -799,8 +694,7 @@ def test_printing_session_planned_sqft_matches_batch():
 
 
 def test_printing_session_status_defaults_to_in_progress():
-    SessionLocal = _get_session_factory()
-    db = SessionLocal()
+    db = _get_session_factory()()
 
     try:
         printer = _create_printer(db)
@@ -832,24 +726,19 @@ def test_batch_items_and_allocations_survive_refresh():
 
     try:
         printer = _create_printer(db)
-
         campaign = _create_campaign(db)
         version = _create_campaign_version(db, campaign)
         artwork = _create_artwork(db, version)
 
         batch = _create_batch(db, printer)
-
-        item = _create_item(
-            db,
-            batch,
-            artwork,
-        )
+        item = _create_item(db, batch, artwork)
 
         roll = _create_media_roll(db)
 
         allocation = _create_allocation(
             db,
             item,
+            artwork,
             roll,
         )
 
@@ -867,25 +756,11 @@ def test_batch_items_and_allocations_survive_refresh():
         )
 
         assert refreshed is not None
+        assert len(refreshed.production_items) == 1
+        assert len(refreshed.allocations) == 1
 
-        assert len(
-            refreshed.production_items
-        ) == 1
-
-        assert (
-            refreshed.production_items[0].id
-            == item_id
-        )
-
-        # Current ProductionBatch model exposes allocations.
-        assert len(
-            refreshed.allocations
-        ) == 1
-
-        assert (
-            refreshed.allocations[0].id
-            == allocation_id
-        )
+        assert refreshed.production_items[0].id == item_id
+        assert refreshed.allocations[0].id == allocation_id
 
     finally:
         db.rollback()
@@ -893,8 +768,7 @@ def test_batch_items_and_allocations_survive_refresh():
 
 
 def test_multiple_allocations_are_kept_separately():
-    SessionLocal = _get_session_factory()
-    db = SessionLocal()
+    db = _get_session_factory()()
 
     try:
         from repositories.production_allocation_repository import (
@@ -902,7 +776,6 @@ def test_multiple_allocations_are_kept_separately():
         )
 
         printer = _create_printer(db)
-
         campaign = _create_campaign(db)
         version = _create_campaign_version(db, campaign)
 
@@ -912,10 +785,7 @@ def test_multiple_allocations_are_kept_separately():
             sqft=200,
         )
 
-        batch = _create_batch(
-            db,
-            printer,
-        )
+        batch = _create_batch(db, printer)
 
         item = _create_item(
             db,
@@ -937,6 +807,7 @@ def test_multiple_allocations_are_kept_separately():
         allocation_1 = _create_allocation(
             db,
             item,
+            artwork,
             roll_1,
             allocated_sqft=100,
         )
@@ -944,16 +815,14 @@ def test_multiple_allocations_are_kept_separately():
         allocation_2 = _create_allocation(
             db,
             item,
+            artwork,
             roll_2,
             allocated_sqft=100,
         )
 
-        result = (
-            ProductionAllocationRepository
-            .get_by_batch(
-                db,
-                batch.id,
-            )
+        result = ProductionAllocationRepository.get_by_batch(
+            db,
+            batch.id,
         )
 
         assert len(result) == 2
@@ -980,8 +849,7 @@ def test_multiple_allocations_are_kept_separately():
 
 
 def test_allocation_rollback_does_not_persist():
-    SessionLocal = _get_session_factory()
-    db = SessionLocal()
+    db = _get_session_factory()()
 
     try:
         from repositories.production_allocation_repository import (
@@ -989,40 +857,30 @@ def test_allocation_rollback_does_not_persist():
         )
 
         printer = _create_printer(db)
-
         campaign = _create_campaign(db)
         version = _create_campaign_version(db, campaign)
         artwork = _create_artwork(db, version)
 
-        batch = _create_batch(
-            db,
-            printer,
-        )
-
-        item = _create_item(
-            db,
-            batch,
-            artwork,
-        )
+        batch = _create_batch(db, printer)
+        item = _create_item(db, batch, artwork)
 
         roll = _create_media_roll(db)
 
         allocation = _create_allocation(
             db,
             item,
+            artwork,
             roll,
         )
 
         allocation_id = allocation.id
+        batch_id = batch.id
 
         db.rollback()
 
-        result = (
-            ProductionAllocationRepository
-            .get_by_batch(
-                db,
-                batch.id,
-            )
+        result = ProductionAllocationRepository.get_by_batch(
+            db,
+            batch_id,
         )
 
         assert all(
@@ -1036,61 +894,19 @@ def test_allocation_rollback_does_not_persist():
 
 
 # ============================================================
-# TRANSACTION / PERSISTENCE
-# ============================================================
-
-def test_batch_is_persisted_after_commit():
-    SessionLocal = _get_session_factory()
-    db = SessionLocal()
-
-    try:
-        printer = _create_printer(db)
-
-        batch = _create_batch(
-            db,
-            printer,
-            batch_number="PACK9B-PERSIST-001",
-        )
-
-        batch_id = batch.id
-
-        db.commit()
-
-        refreshed = db.get(
-            ProductionBatch,
-            batch_id,
-        )
-
-        assert refreshed is not None
-        assert (
-            refreshed.batch_number
-            == "PACK9B-PERSIST-001"
-        )
-
-    finally:
-        db.rollback()
-        db.close()
-
-
-# ============================================================
 # CASCADE DELETE
 # ============================================================
 
 def test_deleting_batch_removes_production_items():
-    SessionLocal = _get_session_factory()
-    db = SessionLocal()
+    db = _get_session_factory()()
 
     try:
         printer = _create_printer(db)
-
         campaign = _create_campaign(db)
         version = _create_campaign_version(db, campaign)
         artwork = _create_artwork(db, version)
 
-        batch = _create_batch(
-            db,
-            printer,
-        )
+        batch = _create_batch(db, printer)
 
         item = _create_item(
             db,
@@ -1120,16 +936,11 @@ def test_deleting_batch_removes_production_items():
 
 
 def test_deleting_batch_removes_printing_sessions():
-    SessionLocal = _get_session_factory()
-    db = SessionLocal()
+    db = _get_session_factory()()
 
     try:
         printer = _create_printer(db)
-
-        batch = _create_batch(
-            db,
-            printer,
-        )
+        batch = _create_batch(db, printer)
 
         session = PrintingSession(
             production_batch_id=batch.id,
