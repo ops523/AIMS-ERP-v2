@@ -87,6 +87,12 @@ class Printer(
         cascade="all, save-update",
     )
 
+    user = relationship(
+        "User",
+        back_populates="printer",
+        uselist=False,
+    )
+
     # Keep this commented until ProductionRoll is created.
     # production_rolls = relationship(
     #     "ProductionRoll",
