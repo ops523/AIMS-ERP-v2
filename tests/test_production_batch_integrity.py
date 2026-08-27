@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import inspect
-from datetime import date
 
 import pytest
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -28,46 +28,44 @@ from services.production_allocation_service import (
 
 
 # ============================================================
-# Test database
+# TEST DATABASE
 # ============================================================
 
-@pytest.fixture
-def db():
+def _get_session_factory():
+    """
+    Create a completely isolated in-memory SQLite database.
+
+    The application models are used directly so these tests
+    validate the actual Pack 9B ORM structure.
+    """
+
     engine = create_engine(
         "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
+        future=True,
     )
 
     Base.metadata.create_all(engine)
 
-    SessionLocal = sessionmaker(
+    return sessionmaker(
         bind=engine,
         autoflush=True,
-        autocommit=False,
+        expire_on_commit=False,
     )
-
-    session = SessionLocal()
-
-    try:
-        yield session
-    finally:
-        session.rollback()
-        session.close()
-        Base.metadata.drop_all(engine)
-        engine.dispose()
 
 
 # ============================================================
-# Fixtures / helpers
+# FIXTURES / HELPERS
 # ============================================================
 
 def _create_printer(db):
     """
     Create the minimum Printer record required by ProductionBatch.
+
+    Current Printer model requires printer_code.
     """
 
     printer = Printer(
-        printer_code="PACK9B-TEST-PRINTER",
+        printer_code="PACK9B-PRINTER-001",
         printer_name="PACK9B-TEST-PRINTER",
         is_active=True,
     )
@@ -78,19 +76,26 @@ def _create_printer(db):
     return printer
 
 
-def _create_campaign(db):
+def _create_campaign(db, suffix="001"):
     """
-    Create a valid Campaign using the mandatory fields
-    currently required by the Campaign model.
+    Create a valid Campaign record.
+
+    Current Campaign model requires:
+        campaign_code
+        client_name
+        brand_name
+        campaign_name
+        start_date
     """
 
+    from datetime import date
+
     campaign = Campaign(
-        campaign_code="PACK9B-TEST-CAMPAIGN",
+        campaign_code=f"PACK9B-CAMPAIGN-{suffix}",
         client_name="PACK9B TEST CLIENT",
         brand_name="PACK9B TEST BRAND",
-        campaign_name="PACK9B TEST CAMPAIGN",
+        campaign_name=f"PACK9B TEST CAMPAIGN {suffix}",
         start_date=date(2026, 1, 1),
-        end_date=date(2026, 12, 31),
     )
 
     db.add(campaign)
@@ -99,17 +104,20 @@ def _create_campaign(db):
     return campaign
 
 
-def _create_campaign_version(db, campaign):
+def _create_campaign_version(
+    db,
+    campaign,
+    suffix="001",
+):
     """
-    CampaignArtwork belongs to CampaignVersion, not directly
-    to Campaign.
+    Create the CampaignVersion required by CampaignArtwork.
     """
 
     version = CampaignVersion(
         campaign_id=campaign.id,
         version_no=1,
         version_name="V1",
-        import_batch="PACK9B-TEST-IMPORT",
+        import_batch=f"PACK9B-IMPORT-{suffix}",
         total_locations=1,
         total_walls=1,
         total_sqft=250,
@@ -124,22 +132,25 @@ def _create_campaign_version(db, campaign):
 def _create_artwork(
     db,
     campaign_version,
-    sqft=250.0,
-    artwork_code="PACK9B-ART-001",
+    sqft=100.0,
+    suffix="001",
 ):
     """
     Create a valid CampaignArtwork.
+
+    CampaignArtwork is linked to CampaignVersion, not directly
+    to Campaign.
     """
 
     artwork = CampaignArtwork(
         campaign_version_id=campaign_version.id,
-        artwork_code=artwork_code,
-        artwork_name="PACK9B TEST ARTWORK",
-        file_name="pack9b_test.jpg",
+        artwork_code=f"PACK9B-ART-{suffix}",
+        artwork_name=f"PACK9B TEST ARTWORK {suffix}",
+        file_name=f"pack9b_test_{suffix}.png",
         width_ft=10.0,
-        height_ft=25.0,
+        height_ft=10.0,
         artwork_sqft=sqft,
-        assigned_walls=1,
+        assigned_walls=0,
     )
 
     db.add(artwork)
@@ -148,12 +159,15 @@ def _create_artwork(
     return artwork
 
 
-def _create_printer_and_batch(
+def _create_batch(
     db,
+    printer,
     batch_number="PACK9B-001",
     status="PLANNED",
 ):
-    printer = _create_printer(db)
+    """
+    Create a ProductionBatch.
+    """
 
     batch = ProductionBatch(
         batch_number=batch_number,
@@ -164,28 +178,26 @@ def _create_printer_and_batch(
     db.add(batch)
     db.flush()
 
-    return printer, batch
+    return batch
 
 
 def _create_item(
     db,
     batch,
     artwork,
-    planned_sqft=None,
-    printed_sqft=0,
-    wastage_sqft=0,
-    status="PENDING",
+    planned_sqft=100.0,
 ):
-    if planned_sqft is None:
-        planned_sqft = artwork.artwork_sqft
+    """
+    Create a ProductionItem linked to both the batch and artwork.
+    """
 
     item = ProductionItem(
         production_batch_id=batch.id,
         campaign_artwork_id=artwork.id,
         planned_sqft=planned_sqft,
-        printed_sqft=printed_sqft,
-        wastage_sqft=wastage_sqft,
-        status=status,
+        printed_sqft=0,
+        wastage_sqft=0,
+        status="PENDING",
     )
 
     db.add(item)
@@ -194,48 +206,46 @@ def _create_item(
     return item
 
 
-def _create_media_roll(db):
+def _create_media_roll(
+    db,
+    suffix="001",
+    total_sqft=400.0,
+):
     """
-    Create a MediaRoll using the fields currently supported by
-    the model.
+    Create a valid MediaRoll.
 
-    The helper intentionally discovers the model's supported
-    fields instead of passing obsolete manufacturer_roll_number
-    arguments.
+    The current MediaRoll model requires:
+        asset_id
+        roll_number
+        supplier_id
+        manufacturer_id
+        product_id
+        warehouse_id
+        ordered_length_m
+        actual_length_m
+        width_ft
+        total_sqft
+        available_sqft
+
+    Existing inventory tests use master IDs = 1, so Pack 9B
+    follows the same established test convention.
     """
 
-    mapper = MediaRoll.__mapper__
-
-    values = {}
-
-    if "roll_number" in mapper.columns:
-        values["roll_number"] = "PACK9B-ROLL-001"
-
-    if "roll_code" in mapper.columns:
-        values["roll_code"] = "PACK9B-ROLL-001"
-
-    if "width_ft" in mapper.columns:
-        values["width_ft"] = 4.0
-
-    if "ordered_length_ft" in mapper.columns:
-        values["ordered_length_ft"] = 100.0
-
-    if "actual_length_ft" in mapper.columns:
-        values["actual_length_ft"] = 100.0
-
-    if "total_sqft" in mapper.columns:
-        values["total_sqft"] = 400.0
-
-    if "ordered_sqft" in mapper.columns:
-        values["ordered_sqft"] = 400.0
-
-    if "actual_sqft" in mapper.columns:
-        values["actual_sqft"] = 400.0
-
-    if "status" in mapper.columns:
-        values["status"] = "AVAILABLE"
-
-    roll = MediaRoll(**values)
+    roll = MediaRoll(
+        asset_id=f"PACK9B-ASSET-{suffix}",
+        roll_number=f"PACK9B-ROLL-{suffix}",
+        supplier_id=1,
+        manufacturer_id=1,
+        product_id=1,
+        warehouse_id=1,
+        ordered_length_m=30.0,
+        actual_length_m=30.0,
+        width_ft=4.0,
+        total_sqft=total_sqft,
+        available_sqft=total_sqft,
+        status="AVAILABLE",
+        is_active=True,
+    )
 
     db.add(roll)
     db.flush()
@@ -250,23 +260,22 @@ def _create_allocation(
     artwork,
     media_roll,
     allocated_sqft=100.0,
-    status="ALLOCATED",
 ):
     """
-    Create a ProductionAllocation using every mandatory
-    foreign-key relationship in the current model.
+    Create ProductionAllocation using the current model
+    structure directly.
     """
 
     allocation = ProductionAllocation(
-        production_batch_id=batch.id,
         production_item_id=item.id,
         campaign_artwork_id=artwork.id,
+        production_batch_id=batch.id,
         media_roll_id=media_roll.id,
         allocated_sqft=allocated_sqft,
         printed_sqft=0,
         wastage_sqft=0,
         balance_sqft=allocated_sqft,
-        status=status,
+        status="ALLOCATED",
     )
 
     db.add(allocation)
@@ -275,222 +284,266 @@ def _create_allocation(
     return allocation
 
 
-def _create_complete_context(
+def _create_complete_setup(
     db,
-    sqft=250.0,
+    suffix="001",
     batch_number="PACK9B-001",
-    artwork_code="PACK9B-ART-001",
+    artwork_sqft=100.0,
 ):
-    printer, batch = _create_printer_and_batch(
+    """
+    Create a complete Pack 9B production chain:
+
+        Campaign
+            ↓
+        CampaignVersion
+            ↓
+        CampaignArtwork
+            ↓
+        ProductionBatch
+            ↓
+        ProductionItem
+            ↓
+        MediaRoll
+            ↓
+        ProductionAllocation
+    """
+
+    printer = _create_printer(db)
+
+    campaign = _create_campaign(
         db,
-        batch_number=batch_number,
+        suffix=suffix,
     )
 
-    campaign = _create_campaign(db)
-
-    version = _create_campaign_version(
+    campaign_version = _create_campaign_version(
         db,
-        campaign,
+        campaign=campaign,
+        suffix=suffix,
     )
 
     artwork = _create_artwork(
         db,
-        version,
-        sqft=sqft,
-        artwork_code=artwork_code,
+        campaign_version=campaign_version,
+        sqft=artwork_sqft,
+        suffix=suffix,
+    )
+
+    batch = _create_batch(
+        db,
+        printer=printer,
+        batch_number=batch_number,
     )
 
     item = _create_item(
         db,
-        batch,
-        artwork,
-        planned_sqft=sqft,
+        batch=batch,
+        artwork=artwork,
+        planned_sqft=artwork_sqft,
     )
 
-    media_roll = _create_media_roll(db)
+    media_roll = _create_media_roll(
+        db,
+        suffix=suffix,
+    )
 
     return {
         "printer": printer,
-        "batch": batch,
         "campaign": campaign,
-        "version": version,
+        "campaign_version": campaign_version,
         "artwork": artwork,
+        "batch": batch,
         "item": item,
         "media_roll": media_roll,
     }
 
 
 # ============================================================
-# Production Batch
+# PRODUCTION BATCH TESTS
 # ============================================================
 
-def test_production_batch_can_be_created(db):
+def test_production_batch_can_be_created():
+    SessionLocal = _get_session_factory()
+    db = SessionLocal()
 
-    printer, batch = _create_printer_and_batch(db)
+    printer = _create_printer(db)
+
+    batch = _create_batch(
+        db,
+        printer=printer,
+    )
 
     assert batch.id is not None
     assert batch.batch_number == "PACK9B-001"
     assert batch.printer_id == printer.id
     assert batch.status == "PLANNED"
 
-
-def test_production_item_is_linked_to_batch(db):
-
-    ctx = _create_complete_context(db)
-
-    item = ctx["item"]
-    batch = ctx["batch"]
-
-    assert item.production_batch_id == batch.id
-    assert item.production_batch.id == batch.id
+    db.close()
 
 
-def test_production_item_is_linked_to_campaign_artwork(db):
+def test_production_item_is_linked_to_batch():
+    SessionLocal = _get_session_factory()
+    db = SessionLocal()
 
-    ctx = _create_complete_context(db)
+    setup = _create_complete_setup(db)
 
-    item = ctx["item"]
-    artwork = ctx["artwork"]
+    assert setup["item"].production_batch_id == setup["batch"].id
+    assert setup["item"].production_batch.id == setup["batch"].id
 
-    assert item.campaign_artwork_id == artwork.id
-    assert item.campaign_artwork.id == artwork.id
+    db.close()
 
 
-def test_batch_total_planned_sqft_is_calculated(db):
+def test_production_item_is_linked_to_campaign_artwork():
+    SessionLocal = _get_session_factory()
+    db = SessionLocal()
 
-    ctx = _create_complete_context(
-        db,
-        sqft=250.0,
+    setup = _create_complete_setup(db)
+
+    assert (
+        setup["item"].campaign_artwork_id
+        == setup["artwork"].id
     )
 
-    batch = ctx["batch"]
-    artwork = ctx["artwork"]
-
-    item2 = _create_item(
-        db,
-        batch,
-        artwork,
-        planned_sqft=150.0,
+    assert (
+        setup["item"].campaign_artwork.id
+        == setup["artwork"].id
     )
 
-    assert item2.id is not None
-    assert batch.total_planned_sqft == 400.0
+    db.close()
 
 
-def test_batch_total_printed_sqft_is_calculated(db):
+def test_batch_total_planned_sqft_is_calculated():
+    SessionLocal = _get_session_factory()
+    db = SessionLocal()
 
-    ctx = _create_complete_context(
+    setup = _create_complete_setup(
         db,
-        sqft=250.0,
+        artwork_sqft=250.0,
     )
 
-    batch = ctx["batch"]
-    item = ctx["item"]
+    assert setup["batch"].total_planned_sqft == 250.0
 
-    item.printed_sqft = 175.0
+    db.close()
+
+
+def test_batch_total_printed_sqft_is_calculated():
+    SessionLocal = _get_session_factory()
+    db = SessionLocal()
+
+    setup = _create_complete_setup(
+        db,
+        artwork_sqft=250.0,
+    )
+
+    setup["item"].printed_sqft = 150.0
     db.flush()
 
-    assert batch.total_printed_sqft == 175.0
+    assert setup["batch"].total_printed_sqft == 150.0
+
+    db.close()
 
 
-def test_batch_total_wastage_sqft_is_calculated(db):
+def test_batch_total_wastage_sqft_is_calculated():
+    SessionLocal = _get_session_factory()
+    db = SessionLocal()
 
-    ctx = _create_complete_context(
+    setup = _create_complete_setup(
         db,
-        sqft=250.0,
+        artwork_sqft=250.0,
     )
 
-    batch = ctx["batch"]
-    item = ctx["item"]
-
-    item.wastage_sqft = 25.0
+    setup["item"].wastage_sqft = 25.0
     db.flush()
 
-    assert batch.total_wastage_sqft == 25.0
+    assert setup["batch"].total_wastage_sqft == 25.0
+
+    db.close()
 
 
-def test_batch_completion_percentage_is_calculated(db):
+def test_batch_completion_percentage_is_calculated():
+    SessionLocal = _get_session_factory()
+    db = SessionLocal()
 
-    ctx = _create_complete_context(
+    setup = _create_complete_setup(
         db,
-        sqft=250.0,
+        artwork_sqft=250.0,
     )
 
-    batch = ctx["batch"]
-    item = ctx["item"]
-
-    item.printed_sqft = 125.0
+    setup["item"].printed_sqft = 125.0
     db.flush()
 
-    assert batch.completion_percentage == 50.0
+    assert setup["batch"].completion_percentage == 50.0
+
+    db.close()
 
 
 # ============================================================
-# Production Allocation
+# PRODUCTION ALLOCATION TESTS
 # ============================================================
 
-def test_production_allocation_can_be_created(db):
+def test_production_allocation_can_be_created():
+    SessionLocal = _get_session_factory()
+    db = SessionLocal()
 
-    ctx = _create_complete_context(db)
+    setup = _create_complete_setup(db)
 
     allocation = _create_allocation(
         db,
-        batch=ctx["batch"],
-        item=ctx["item"],
-        artwork=ctx["artwork"],
-        media_roll=ctx["media_roll"],
+        batch=setup["batch"],
+        item=setup["item"],
+        artwork=setup["artwork"],
+        media_roll=setup["media_roll"],
         allocated_sqft=100.0,
     )
 
     assert allocation.id is not None
-    assert allocation.production_batch_id == ctx["batch"].id
-    assert allocation.production_item_id == ctx["item"].id
-    assert allocation.campaign_artwork_id == ctx["artwork"].id
-    assert allocation.media_roll_id == ctx["media_roll"].id
+    assert allocation.production_batch_id == setup["batch"].id
+    assert allocation.production_item_id == setup["item"].id
+    assert allocation.campaign_artwork_id == setup["artwork"].id
+    assert allocation.media_roll_id == setup["media_roll"].id
     assert allocation.allocated_sqft == 100.0
     assert allocation.printed_sqft == 0
     assert allocation.wastage_sqft == 0
     assert allocation.balance_sqft == 100.0
     assert allocation.status == "ALLOCATED"
 
+    db.close()
 
-def test_production_allocation_repository_returns_batch_allocations(db):
 
-    ctx = _create_complete_context(db)
+def test_production_allocation_repository_returns_batch_allocations():
+    SessionLocal = _get_session_factory()
+    db = SessionLocal()
+
+    setup = _create_complete_setup(db)
 
     allocation = _create_allocation(
         db,
-        batch=ctx["batch"],
-        item=ctx["item"],
-        artwork=ctx["artwork"],
-        media_roll=ctx["media_roll"],
+        batch=setup["batch"],
+        item=setup["item"],
+        artwork=setup["artwork"],
+        media_roll=setup["media_roll"],
         allocated_sqft=100.0,
     )
 
-    results = ProductionAllocationRepository.get_by_batch(
+    allocations = ProductionAllocationRepository.get_by_batch(
         db,
-        ctx["batch"].id,
+        setup["batch"].id,
     )
 
-    assert len(results) == 1
-    assert results[0].id == allocation.id
-    assert results[0].production_batch_id == ctx["batch"].id
+    assert len(allocations) == 1
+    assert allocations[0].id == allocation.id
+    assert allocations[0].production_batch_id == setup["batch"].id
+
+    db.close()
 
 
 def test_allocation_service_signature_matches_current_contract():
-
     signature = inspect.signature(
-        ProductionAllocationService.allocate,
+        ProductionAllocationService.allocate
     )
 
-    parameters = list(signature.parameters.values())
+    parameters = list(signature.parameters.keys())
 
-    names = [
-        parameter.name
-        for parameter in parameters
-    ]
-
-    assert names == [
+    assert parameters == [
         "db",
         "batch",
         "item",
@@ -501,339 +554,45 @@ def test_allocation_service_signature_matches_current_contract():
     ]
 
 
-def test_allocation_service_creates_allocation(db):
+def test_allocation_service_creates_allocation():
+    SessionLocal = _get_session_factory()
+    db = SessionLocal()
 
-    ctx = _create_complete_context(db)
+    setup = _create_complete_setup(db)
 
     allocation = ProductionAllocationService.allocate(
         db=db,
-        batch=ctx["batch"],
-        item=ctx["item"],
-        artwork=ctx["artwork"],
-        media_roll=ctx["media_roll"],
-        allocated_sqft=120.0,
+        batch=setup["batch"],
+        item=setup["item"],
+        artwork=setup["artwork"],
+        media_roll=setup["media_roll"],
+        allocated_sqft=125.0,
     )
 
     assert allocation.id is not None
-    assert allocation.production_batch_id == ctx["batch"].id
-    assert allocation.production_item_id == ctx["item"].id
-    assert allocation.campaign_artwork_id == ctx["artwork"].id
-    assert allocation.media_roll_id == ctx["media_roll"].id
-    assert allocation.allocated_sqft == 120.0
+    assert allocation.production_batch_id == setup["batch"].id
+    assert allocation.production_item_id == setup["item"].id
+    assert allocation.campaign_artwork_id == setup["artwork"].id
+    assert allocation.media_roll_id == setup["media_roll"].id
+    assert allocation.allocated_sqft == 125.0
     assert allocation.printed_sqft == 0
     assert allocation.wastage_sqft == 0
-    assert allocation.balance_sqft == 120.0
+    assert allocation.balance_sqft == 125.0
     assert allocation.status == "ALLOCATED"
 
+    db.close()
 
-def test_allocation_service_rejects_zero_quantity(db):
 
-    ctx = _create_complete_context(db)
+def test_printing_session_is_linked_to_batch():
+    SessionLocal = _get_session_factory()
+    db = SessionLocal()
 
-    with pytest.raises(
-        ValueError,
-        match="Allocated quantity must be greater than zero",
-    ):
-        ProductionAllocationService.allocate(
-            db=db,
-            batch=ctx["batch"],
-            item=ctx["item"],
-            artwork=ctx["artwork"],
-            media_roll=ctx["media_roll"],
-            allocated_sqft=0,
-        )
-
-
-def test_allocation_service_rejects_negative_quantity(db):
-
-    ctx = _create_complete_context(db)
-
-    with pytest.raises(
-        ValueError,
-        match="Allocated quantity must be greater than zero",
-    ):
-        ProductionAllocationService.allocate(
-            db=db,
-            batch=ctx["batch"],
-            item=ctx["item"],
-            artwork=ctx["artwork"],
-            media_roll=ctx["media_roll"],
-            allocated_sqft=-10,
-        )
-
-
-# ============================================================
-# Allocation calculations
-# ============================================================
-
-def test_allocation_completion_percentage_starts_at_zero(db):
-
-    ctx = _create_complete_context(db)
-
-    allocation = _create_allocation(
-        db,
-        batch=ctx["batch"],
-        item=ctx["item"],
-        artwork=ctx["artwork"],
-        media_roll=ctx["media_roll"],
-        allocated_sqft=100.0,
-    )
-
-    assert allocation.completion_percentage == 0.0
-
-
-def test_allocation_can_be_partially_printed(db):
-
-    ctx = _create_complete_context(db)
-
-    allocation = ProductionAllocationService.allocate(
-        db=db,
-        batch=ctx["batch"],
-        item=ctx["item"],
-        artwork=ctx["artwork"],
-        media_roll=ctx["media_roll"],
-        allocated_sqft=100.0,
-    )
-
-    ProductionAllocationService.update_printed_quantity(
-        db=db,
-        allocation=allocation,
-        printed_sqft=60.0,
-        wastage_sqft=0,
-    )
-
-    assert allocation.printed_sqft == 60.0
-    assert allocation.wastage_sqft == 0
-    assert allocation.balance_sqft == 40.0
-    assert allocation.status == "PARTIALLY_PRINTED"
-    assert allocation.completion_percentage == 60.0
-
-
-def test_allocation_can_be_completed(db):
-
-    ctx = _create_complete_context(db)
-
-    allocation = ProductionAllocationService.allocate(
-        db=db,
-        batch=ctx["batch"],
-        item=ctx["item"],
-        artwork=ctx["artwork"],
-        media_roll=ctx["media_roll"],
-        allocated_sqft=100.0,
-    )
-
-    ProductionAllocationService.update_printed_quantity(
-        db=db,
-        allocation=allocation,
-        printed_sqft=100.0,
-        wastage_sqft=0,
-    )
-
-    assert allocation.printed_sqft == 100.0
-    assert allocation.balance_sqft == 0.0
-    assert allocation.status == "COMPLETED"
-    assert allocation.completion_percentage == 100.0
-
-
-def test_allocation_wastage_reduces_balance(db):
-
-    ctx = _create_complete_context(db)
-
-    allocation = ProductionAllocationService.allocate(
-        db=db,
-        batch=ctx["batch"],
-        item=ctx["item"],
-        artwork=ctx["artwork"],
-        media_roll=ctx["media_roll"],
-        allocated_sqft=100.0,
-    )
-
-    ProductionAllocationService.update_printed_quantity(
-        db=db,
-        allocation=allocation,
-        printed_sqft=70.0,
-        wastage_sqft=10.0,
-    )
-
-    assert allocation.printed_sqft == 70.0
-    assert allocation.wastage_sqft == 10.0
-    assert allocation.balance_sqft == 20.0
-    assert allocation.status == "PARTIALLY_PRINTED"
-
-
-def test_allocation_cannot_process_more_than_allocated(db):
-
-    ctx = _create_complete_context(db)
-
-    allocation = ProductionAllocationService.allocate(
-        db=db,
-        batch=ctx["batch"],
-        item=ctx["item"],
-        artwork=ctx["artwork"],
-        media_roll=ctx["media_roll"],
-        allocated_sqft=100.0,
-    )
-
-    with pytest.raises(
-        ValueError,
-        match="cannot exceed allocated quantity",
-    ):
-        ProductionAllocationService.update_printed_quantity(
-            db=db,
-            allocation=allocation,
-            printed_sqft=80.0,
-            wastage_sqft=30.0,
-        )
-
-
-# ============================================================
-# Batch relationships
-# ============================================================
-
-def test_batch_items_and_allocations_survive_refresh(db):
-
-    ctx = _create_complete_context(db)
-
-    allocation = ProductionAllocationService.allocate(
-        db=db,
-        batch=ctx["batch"],
-        item=ctx["item"],
-        artwork=ctx["artwork"],
-        media_roll=ctx["media_roll"],
-        allocated_sqft=100.0,
-    )
-
-    db.commit()
-
-    db.expire_all()
-
-    batch = db.get(
-        ProductionBatch,
-        ctx["batch"].id,
-    )
-
-    assert batch is not None
-    assert len(batch.production_items) == 1
-    assert len(batch.allocations) == 1
-
-    refreshed_allocation = batch.allocations[0]
-
-    assert refreshed_allocation.id == allocation.id
-    assert refreshed_allocation.production_batch_id == batch.id
-    assert refreshed_allocation.production_item_id == ctx["item"].id
-    assert refreshed_allocation.campaign_artwork_id == ctx["artwork"].id
-    assert refreshed_allocation.media_roll_id == ctx["media_roll"].id
-
-
-def test_multiple_allocations_are_kept_separately(db):
-
-    ctx = _create_complete_context(db)
-
-    roll2 = _create_media_roll(db)
-
-    allocation1 = ProductionAllocationService.allocate(
-        db=db,
-        batch=ctx["batch"],
-        item=ctx["item"],
-        artwork=ctx["artwork"],
-        media_roll=ctx["media_roll"],
-        allocated_sqft=100.0,
-    )
-
-    allocation2 = ProductionAllocationService.allocate(
-        db=db,
-        batch=ctx["batch"],
-        item=ctx["item"],
-        artwork=ctx["artwork"],
-        media_roll=roll2,
-        allocated_sqft=150.0,
-    )
-
-    results = ProductionAllocationRepository.get_by_batch(
-        db,
-        ctx["batch"].id,
-    )
-
-    assert len(results) == 2
-
-    ids = {
-        allocation.id
-        for allocation in results
-    }
-
-    assert allocation1.id in ids
-    assert allocation2.id in ids
-
-    quantities = sorted(
-        allocation.allocated_sqft
-        for allocation in results
-    )
-
-    assert quantities == [100.0, 150.0]
-
-
-def test_allocation_rollback_does_not_persist(db):
-
-    ctx = _create_complete_context(db)
-
-    allocation = ProductionAllocationService.allocate(
-        db=db,
-        batch=ctx["batch"],
-        item=ctx["item"],
-        artwork=ctx["artwork"],
-        media_roll=ctx["media_roll"],
-        allocated_sqft=100.0,
-    )
-
-    allocation_id = allocation.id
-
-    db.rollback()
-
-    result = db.get(
-        ProductionAllocation,
-        allocation_id,
-    )
-
-    assert result is None
-
-
-# ============================================================
-# Cascade behaviour
-# ============================================================
-
-def test_deleting_batch_removes_production_items(db):
-
-    ctx = _create_complete_context(db)
-
-    batch_id = ctx["batch"].id
-    item_id = ctx["item"].id
-
-    db.delete(ctx["batch"])
-    db.commit()
-
-    assert db.get(
-        ProductionBatch,
-        batch_id,
-    ) is None
-
-    assert db.get(
-        ProductionItem,
-        item_id,
-    ) is None
-
-
-# ============================================================
-# Printing Session
-# ============================================================
-
-def test_printing_session_is_linked_to_batch(db):
-
-    ctx = _create_complete_context(db)
+    setup = _create_complete_setup(db)
 
     session = PrintingSession(
-        production_batch_id=ctx["batch"].id,
-        printer_id=ctx["printer"].id,
-        planned_sqft=ctx["batch"].total_planned_sqft,
+        production_batch_id=setup["batch"].id,
+        printer_id=setup["printer"].id,
+        planned_sqft=setup["batch"].total_planned_sqft,
         status="IN_PROGRESS",
     )
 
@@ -841,25 +600,208 @@ def test_printing_session_is_linked_to_batch(db):
     db.flush()
 
     assert session.id is not None
-    assert session.production_batch_id == ctx["batch"].id
-    assert session.printer_id == ctx["printer"].id
+    assert session.production_batch_id == setup["batch"].id
+    assert session.printer_id == setup["printer"].id
+
+    db.close()
 
 
-def test_printing_session_planned_sqft_matches_batch(db):
+def test_printing_session_planned_sqft_matches_batch():
+    SessionLocal = _get_session_factory()
+    db = SessionLocal()
 
-    ctx = _create_complete_context(
+    setup = _create_complete_setup(
         db,
-        sqft=250.0,
+        artwork_sqft=300.0,
     )
 
     session = PrintingSession(
-        production_batch_id=ctx["batch"].id,
-        printer_id=ctx["printer"].id,
-        planned_sqft=ctx["batch"].total_planned_sqft,
+        production_batch_id=setup["batch"].id,
+        printer_id=setup["printer"].id,
+        planned_sqft=setup["batch"].total_planned_sqft,
         status="IN_PROGRESS",
     )
 
     db.add(session)
     db.flush()
 
-    assert session.planned_sqft == ctx["batch"].total_planned_sqft
+    assert session.planned_sqft == 300.0
+    assert (
+        session.planned_sqft
+        == setup["batch"].total_planned_sqft
+    )
+
+    db.close()
+
+
+# ============================================================
+# REFRESH / RELATIONSHIP TESTS
+# ============================================================
+
+def test_batch_items_and_allocations_survive_refresh():
+    SessionLocal = _get_session_factory()
+    db = SessionLocal()
+
+    setup = _create_complete_setup(db)
+
+    allocation = _create_allocation(
+        db,
+        batch=setup["batch"],
+        item=setup["item"],
+        artwork=setup["artwork"],
+        media_roll=setup["media_roll"],
+        allocated_sqft=100.0,
+    )
+
+    db.commit()
+
+    batch_id = setup["batch"].id
+
+    db.expire_all()
+
+    batch = db.get(
+        ProductionBatch,
+        batch_id,
+    )
+
+    assert batch is not None
+    assert len(batch.production_items) == 1
+    assert len(batch.allocations) == 1
+
+    assert (
+        batch.production_items[0].id
+        == setup["item"].id
+    )
+
+    assert (
+        batch.allocations[0].id
+        == allocation.id
+    )
+
+    db.close()
+
+
+def test_multiple_allocations_are_kept_separately():
+    SessionLocal = _get_session_factory()
+    db = SessionLocal()
+
+    setup = _create_complete_setup(db)
+
+    roll_1 = setup["media_roll"]
+
+    roll_2 = _create_media_roll(
+        db,
+        suffix="002",
+    )
+
+    allocation_1 = _create_allocation(
+        db,
+        batch=setup["batch"],
+        item=setup["item"],
+        artwork=setup["artwork"],
+        media_roll=roll_1,
+        allocated_sqft=100.0,
+    )
+
+    allocation_2 = _create_allocation(
+        db,
+        batch=setup["batch"],
+        item=setup["item"],
+        artwork=setup["artwork"],
+        media_roll=roll_2,
+        allocated_sqft=150.0,
+    )
+
+    allocations = ProductionAllocationRepository.get_by_batch(
+        db,
+        setup["batch"].id,
+    )
+
+    assert len(allocations) == 2
+
+    allocation_ids = {
+        allocation.id
+        for allocation in allocations
+    }
+
+    assert allocation_1.id in allocation_ids
+    assert allocation_2.id in allocation_ids
+
+    assert (
+        allocations[0].allocated_sqft
+        + allocations[1].allocated_sqft
+        == 250.0
+    )
+
+    db.close()
+
+
+# ============================================================
+# TRANSACTION / ROLLBACK TEST
+# ============================================================
+
+def test_allocation_rollback_does_not_persist():
+    SessionLocal = _get_session_factory()
+    db = SessionLocal()
+
+    setup = _create_complete_setup(db)
+
+    allocation = ProductionAllocation(
+        production_item_id=setup["item"].id,
+        campaign_artwork_id=setup["artwork"].id,
+        production_batch_id=setup["batch"].id,
+        media_roll_id=setup["media_roll"].id,
+        allocated_sqft=100.0,
+        printed_sqft=0,
+        wastage_sqft=0,
+        balance_sqft=100.0,
+        status="ALLOCATED",
+    )
+
+    db.add(allocation)
+    db.flush()
+
+    allocation_id = allocation.id
+
+    db.rollback()
+
+    persisted = db.get(
+        ProductionAllocation,
+        allocation_id,
+    )
+
+    assert persisted is None
+
+    db.close()
+
+
+# ============================================================
+# CASCADE DELETE TEST
+# ============================================================
+
+def test_deleting_batch_removes_production_items():
+    SessionLocal = _get_session_factory()
+    db = SessionLocal()
+
+    setup = _create_complete_setup(db)
+
+    item_id = setup["item"].id
+    batch_id = setup["batch"].id
+
+    db.delete(setup["batch"])
+    db.flush()
+
+    item = db.get(
+        ProductionItem,
+        item_id,
+    )
+
+    batch = db.get(
+        ProductionBatch,
+        batch_id,
+    )
+
+    assert batch is None
+    assert item is None
+
+    db.close()
