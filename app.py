@@ -19,6 +19,10 @@ load_theme()
 # Initialize Database
 # ---------------------------------------------------------
 
+from config import DATABASE_URL
+
+st.write("DATABASE:", DATABASE_URL)
+
 from core.startup import startup
 
 startup()
