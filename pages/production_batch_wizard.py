@@ -4,12 +4,6 @@ from core.startup import startup
 
 startup()
 
-st.set_page_config(
-    page_title="Production Batch Wizard",
-    page_icon="🖨️",
-    layout="wide",
-)
-
 st.title("🖨️ Production Batch Wizard")
 
 # ------------------------------------------

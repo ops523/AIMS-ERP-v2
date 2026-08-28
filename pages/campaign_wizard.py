@@ -17,7 +17,6 @@ from services.excel_validation_service import ExcelValidationService
 from components.aggrid_table import AgGridTable
 
 
-st.set_page_config(page_title="Campaign Import Wizard", layout="wide")
 
 st.title("📦 Campaign Import Wizard")
 

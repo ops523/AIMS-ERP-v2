@@ -146,3 +146,65 @@ class UserService:
                 "Unable to create printer login account.",
                 [str(exc)],
             )
+
+
+    # =========================================================
+    # RESET USER PASSWORD
+    # =========================================================
+
+    @staticmethod
+    def reset_password(
+        db: Session,
+        user_id: int,
+        new_password: str,
+    ) -> ServiceResult:
+
+        if user_id is None:
+            return ServiceResult.fail(
+                "User is required."
+            )
+
+        if not new_password:
+            return ServiceResult.fail(
+                "Password is required."
+            )
+
+        if len(new_password) < 8:
+            return ServiceResult.fail(
+                "Password must be at least 8 characters."
+            )
+
+        user = (
+            db.query(User)
+            .filter(
+                User.id == user_id
+            )
+            .first()
+        )
+
+        if user is None:
+            return ServiceResult.fail(
+                "User was not found."
+            )
+
+        try:
+
+            with TransactionService.transaction(db):
+
+                user.password_hash = hash_password(
+                    new_password
+                )
+
+                db.flush()
+
+                return ServiceResult.ok(
+                    data=user,
+                    message="Password reset successfully.",
+                )
+
+        except Exception as exc:
+
+            return ServiceResult.fail(
+                "Unable to reset password.",
+                [str(exc)],
+            )

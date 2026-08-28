@@ -6,6 +6,13 @@ from core.auth import current_user, logout
 
 
 def render_authenticated_shell() -> None:
+    """
+    Render the common authenticated application shell.
+
+    Navigation itself is managed by app.py through st.navigation().
+    This component is responsible only for the authenticated
+    user's identity and logout control.
+    """
 
     user = current_user()
 
@@ -13,7 +20,7 @@ def render_authenticated_shell() -> None:
         return
 
     # -----------------------------------------------------
-    # Sidebar
+    # Sidebar - authenticated user
     # -----------------------------------------------------
 
     with st.sidebar:
@@ -45,9 +52,16 @@ def render_authenticated_shell() -> None:
 
             st.rerun()
 
-    # -----------------------------------------------------
-    # Dashboard
-    # -----------------------------------------------------
+
+def render_dashboard() -> None:
+    """
+    Render the default AIMS ERP dashboard.
+    """
+
+    user = current_user()
+
+    if user is None:
+        return
 
     st.title("🏢 AIMS ERP")
 
@@ -90,6 +104,5 @@ def render_authenticated_shell() -> None:
     )
 
     st.info(
-        "Authentication is active. "
-        "Role-based navigation will be added next."
+        "Authentication is active."
     )

@@ -251,3 +251,95 @@ def test_printer_account_password_is_not_stored_plaintext():
 
     finally:
         db.close()
+
+
+def test_user_password_can_be_reset():
+
+    SessionLocal = _get_session_factory()
+    db = SessionLocal()
+
+    try:
+
+        user = User(
+            username="reset_test",
+            password_hash="temporary",
+            full_name="Reset Test",
+            role=ADMIN,
+            is_active=True,
+        )
+
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        result = UserService.reset_password(
+            db=db,
+            user_id=user.id,
+            new_password="NewSecurePassword123!",
+        )
+
+        assert result.success is True
+
+        db.refresh(user)
+
+        assert user.password_hash != "NewSecurePassword123!"
+
+        assert verify_password(
+            "NewSecurePassword123!",
+            user.password_hash,
+        )
+
+    finally:
+        db.close()
+
+
+def test_password_reset_requires_eight_characters():
+
+    SessionLocal = _get_session_factory()
+    db = SessionLocal()
+
+    try:
+
+        user = User(
+            username="short_password_test",
+            password_hash="temporary",
+            full_name="Short Password Test",
+            role=ADMIN,
+            is_active=True,
+        )
+
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        result = UserService.reset_password(
+            db=db,
+            user_id=user.id,
+            new_password="short",
+        )
+
+        assert result.success is False
+        assert "8 characters" in result.message
+
+    finally:
+        db.close()
+
+
+def test_password_reset_rejects_unknown_user():
+
+    SessionLocal = _get_session_factory()
+    db = SessionLocal()
+
+    try:
+
+        result = UserService.reset_password(
+            db=db,
+            user_id=999999,
+            new_password="NewSecurePassword123!",
+        )
+
+        assert result.success is False
+        assert "not found" in result.message.lower()
+
+    finally:
+        db.close()
