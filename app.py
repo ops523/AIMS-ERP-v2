@@ -25,19 +25,29 @@ startup()
 
 from database import SessionLocal
 from models.user import User
+from utils.security import verify_password
 
 db = SessionLocal()
 
 try:
-    users = db.query(User).all()
-    st.write("USERS:", [
-        {
-            "username": u.username,
-            "role": u.role,
-            "active": u.is_active,
-        }
-        for u in users
-    ])
+    user = (
+        db.query(User)
+        .filter(User.username == "admin")
+        .first()
+    )
+
+    st.write("ADMIN EXISTS:", user is not None)
+
+    if user:
+        st.write("ROLE:", user.role)
+        st.write("ACTIVE:", user.is_active)
+        st.write(
+            "PASSWORD MATCH:",
+            verify_password(
+                "admin123",
+                user.password_hash,
+            ),
+        )
 finally:
     db.close()
 
