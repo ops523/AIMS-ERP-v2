@@ -23,34 +23,6 @@ from core.startup import startup
 
 startup()
 
-from database import SessionLocal
-from models.user import User
-from utils.security import verify_password
-
-db = SessionLocal()
-
-try:
-    user = (
-        db.query(User)
-        .filter(User.username == "admin")
-        .first()
-    )
-
-    st.write("ADMIN EXISTS:", user is not None)
-
-    if user:
-        st.write("ROLE:", user.role)
-        st.write("ACTIVE:", user.is_active)
-        st.write(
-            "PASSWORD MATCH:",
-            verify_password(
-                "admin123",
-                user.password_hash,
-            ),
-        )
-finally:
-    db.close()
-
 # ---------------------------------------------------------
 # Authentication
 # ---------------------------------------------------------

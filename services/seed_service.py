@@ -10,6 +10,8 @@ from models.user import User
 from models.document_sequence import DocumentSequence
 from models.system_setting import SystemSetting
 
+from utils.security import hash_password
+
 
 def seed_database(db: Session):
 
@@ -138,7 +140,7 @@ def seed_database(db: Session):
 
             User(
                 username="admin",
-                password_hash="admin123",
+                password_hash=hash_password("admin@123"),
                 full_name="Administrator",
                 role="Admin",
                 is_active=True,
