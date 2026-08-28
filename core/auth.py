@@ -36,16 +36,28 @@ def _get_session_cookie() -> str | None:
     """
     Safely read the persistent authentication cookie.
 
-    The cookie controller may not have finished initializing on
-    the first Streamlit script run. In that case, treat the
-    cookie as unavailable and allow the application to render
-    normally rather than crashing.
+    The cookie controller is client-side and may not have
+    received browser cookies during the first script execution.
     """
 
     try:
+
         controller = _cookie_controller()
-        return controller.get(COOKIE_NAME)
+
+        token = controller.get(COOKIE_NAME)
+
+        if token:
+            st.session_state["_cookie_ready"] = True
+            return token
+
+        # The controller may legitimately have no cookie.
+        # Mark it ready after a successful read.
+        st.session_state["_cookie_ready"] = True
+
+        return None
+
     except (TypeError, AttributeError):
+
         return None
 
 

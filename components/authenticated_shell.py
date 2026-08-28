@@ -5,23 +5,22 @@ import streamlit as st
 from core.auth import current_user, logout
 
 
-def render_authenticated_shell() -> None:
+def render_authenticated_shell(
+    navigation_items=None,
+    page_objects=None,
+) -> None:
     """
     Render the common authenticated application shell.
 
-    Navigation itself is managed by app.py through st.navigation().
-    This component is responsible only for the authenticated
-    user's identity and logout control.
+    The Streamlit navigation widget is hidden in app.py.
+    This component renders the role-aware navigation using
+    st.page_link().
     """
 
     user = current_user()
 
     if user is None:
         return
-
-    # -----------------------------------------------------
-    # Sidebar - authenticated user
-    # -----------------------------------------------------
 
     with st.sidebar:
 
@@ -43,9 +42,38 @@ def render_authenticated_shell() -> None:
 
         st.divider()
 
+        # -------------------------------------------------
+        # Custom role-based navigation
+        # -------------------------------------------------
+
+        if navigation_items and page_objects:
+
+            for item in navigation_items:
+
+                page = page_objects.get(
+                    item.page
+                )
+
+                if page is None:
+                    continue
+
+                st.page_link(
+                    page,
+                    label=item.label,
+                    icon=item.icon,
+                    width="stretch",
+                )
+
+            st.divider()
+
+        # -------------------------------------------------
+        # Logout
+        # -------------------------------------------------
+
         if st.button(
             "Logout",
-            use_container_width=True,
+            use_container_width=False,
+            width="stretch",
         ):
 
             logout()

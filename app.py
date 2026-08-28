@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import streamlit as st
 
 # ---------------------------------------------------------
@@ -38,99 +40,93 @@ from components.authenticated_shell import (
     render_dashboard,
 )
 
-initialize_auth_session()
-
-# ---------------------------------------------------------
-# Navigation
-#
-# IMPORTANT:
-# st.navigation() must be called on every run.
-#
-# This prevents Streamlit from automatically exposing the
-# files inside pages/ before authentication has completed.
-# ---------------------------------------------------------
-
-from core.navigation import get_navigation_for_role
-
-
-def build_navigation():
-    """
-    Build the application navigation based on authentication
-    and the authenticated user's role.
-    """
-
-    # -----------------------------------------------------
-    # Logged-out navigation
-    # -----------------------------------------------------
-
-    if not is_authenticated():
-
-        return {
-            "AIMS ERP": [
-                st.Page(
-                    render_login,
-                    title="Login",
-                    icon="🔐",
-                    default=True,
-                )
-            ]
-        }
-
-    # -----------------------------------------------------
-    # Logged-in navigation
-    # -----------------------------------------------------
-
-    role = st.session_state.get("role")
-
-    navigation_items = get_navigation_for_role(role)
-
-    pages = {
-        "AIMS ERP": [
-            st.Page(
-                render_dashboard,
-                title="App",
-                icon="🏢",
-                default=True,
-            )
-        ]
-    }
-
-    for item in navigation_items:
-
-        pages["AIMS ERP"].append(
-            st.Page(
-                item.page,
-                title=item.label,
-                icon=item.icon,
-            )
-        )
-
-    return pages
-
-
-# ---------------------------------------------------------
-# Build Navigation
-# ---------------------------------------------------------
-
-pages = build_navigation()
-
-pg = st.navigation(
-    pages,
-    position="sidebar",
+from core.navigation import (
+    NAVIGATION_ITEMS,
+    get_navigation_for_role,
 )
 
 # ---------------------------------------------------------
-# Authenticated Shell
+# Build ALL pages on EVERY run
 #
-# Render the identity/logout section only when authenticated.
+# IMPORTANT:
+# Do not make page registration dependent on authentication.
+# Streamlit needs every route registered during the initial
+# execution of the entrypoint to support direct URLs/refresh.
 # ---------------------------------------------------------
 
-if is_authenticated():
+dashboard_page = st.Page(
+    render_dashboard,
+    title="App",
+    icon="🏢",
+    default=True,
+)
 
-    render_authenticated_shell()
+page_objects = {
+    "app": dashboard_page,
+}
+
+for item in NAVIGATION_ITEMS:
+
+    page_objects[item.page] = st.Page(
+        item.page,
+        title=item.label,
+        icon=item.icon,
+    )
+
+all_pages = [
+    dashboard_page,
+]
+
+all_pages.extend(
+    page_objects[item.page]
+    for item in NAVIGATION_ITEMS
+)
 
 # ---------------------------------------------------------
-# Run Selected Page
+# Register the complete router.
+#
+# Navigation UI is intentionally hidden. We render our own
+# role-aware sidebar navigation below.
+# ---------------------------------------------------------
+
+pg = st.navigation(
+    all_pages,
+    position="hidden",
+)
+
+# ---------------------------------------------------------
+# Initialize / restore authentication
+# ---------------------------------------------------------
+
+initialize_auth_session()
+
+# ---------------------------------------------------------
+# Authentication Gate
+# ---------------------------------------------------------
+
+if not is_authenticated():
+
+    render_login()
+
+    st.stop()
+
+# ---------------------------------------------------------
+# Authenticated Shell
+# ---------------------------------------------------------
+
+user = st.session_state.get("role")
+
+navigation_items = get_navigation_for_role(
+    user
+)
+
+render_authenticated_shell(
+    navigation_items=navigation_items,
+    page_objects=page_objects,
+)
+
+# ---------------------------------------------------------
+# Run the selected page
 # ---------------------------------------------------------
 
 pg.run()
