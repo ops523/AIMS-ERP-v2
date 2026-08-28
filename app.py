@@ -1,7 +1,7 @@
 import streamlit as st
 
 # ---------------------------------------------------------
-# Streamlit Configuration (Must be the first Streamlit call)
+# Streamlit Configuration
 # ---------------------------------------------------------
 
 st.set_page_config(
@@ -24,75 +24,29 @@ from core.startup import startup
 startup()
 
 # ---------------------------------------------------------
-# Dashboard
+# Authentication
 # ---------------------------------------------------------
 
-st.title("🏢 AIMS ERP")
-st.caption("Advertising Inventory Management System")
+from core.auth import (
+    initialize_auth_session,
+    is_authenticated,
+)
 
-st.divider()
+from components.login import render_login
+from components.authenticated_shell import (
+    render_authenticated_shell,
+)
 
-# KPI Cards
-col1, col2, col3, col4 = st.columns(4)
+initialize_auth_session()
 
-with col1:
-    st.metric(
-        label="Campaigns",
-        value="0"
-    )
+# ---------------------------------------------------------
+# Application Routing
+# ---------------------------------------------------------
 
-with col2:
-    st.metric(
-        label="Media Rolls",
-        value="0"
-    )
+if not is_authenticated():
 
-with col3:
-    st.metric(
-        label="Printers",
-        value="0"
-    )
+    render_login()
 
-with col4:
-    st.metric(
-        label="Warehouses",
-        value="0"
-    )
+else:
 
-st.divider()
-
-left, right = st.columns([2, 1])
-
-with left:
-
-    st.subheader("Welcome")
-
-    st.info(
-        """
-AIMS ERP has been initialized successfully.
-
-Modules currently under development:
-
-- Campaign Import Wizard
-- Media Roll Inventory
-- Printing Production
-- Packaging
-- Dispatch Planning
-- QR Code Tracking
-- Reports & Analytics
-"""
-    )
-
-with right:
-
-    st.subheader("System Status")
-
-    st.success("✅ Database Connected")
-    st.success("✅ Models Loaded")
-    st.success("✅ Initialization Complete")
-
-st.divider()
-
-st.subheader("Current Version")
-
-st.write("Sprint 3 - Campaign Import Wizard Development")
+    render_authenticated_shell()
