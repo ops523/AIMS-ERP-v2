@@ -19,13 +19,27 @@ load_theme()
 # Initialize Database
 # ---------------------------------------------------------
 
-from config import DATABASE_URL
-
-st.write("DATABASE:", DATABASE_URL)
-
 from core.startup import startup
 
 startup()
+
+from database import SessionLocal
+from models.user import User
+
+db = SessionLocal()
+
+try:
+    users = db.query(User).all()
+    st.write("USERS:", [
+        {
+            "username": u.username,
+            "role": u.role,
+            "active": u.is_active,
+        }
+        for u in users
+    ])
+finally:
+    db.close()
 
 # ---------------------------------------------------------
 # Authentication
