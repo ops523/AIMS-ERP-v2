@@ -48,3 +48,9 @@ class User(Base, UUIDMixin, TimestampMixin):
         "Printer",
         back_populates="user",
     )
+
+    sessions = relationship(
+        "UserSession",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )

@@ -4,6 +4,7 @@ import streamlit as st
 
 from database import SessionLocal
 from services.auth_service import AuthService
+from services.user_session_service import UserSessionService
 
 
 # =========================================================
@@ -16,6 +17,45 @@ USERNAME = "username"
 FULL_NAME = "full_name"
 ROLE = "role"
 PRINTER_ID = "printer_id"
+AUTH_TOKEN = "auth_token"
+
+COOKIE_NAME = "aims_erp_session"
+
+
+# =========================================================
+# COOKIE CONTROLLER
+# =========================================================
+
+def _cookie_controller():
+    from streamlit_cookies_controller import CookieController
+
+    return CookieController()
+
+
+# =========================================================
+# SESSION HELPERS
+# =========================================================
+
+def _clear_session_state() -> None:
+
+    st.session_state[AUTHENTICATED] = False
+    st.session_state[USER_ID] = None
+    st.session_state[USERNAME] = None
+    st.session_state[FULL_NAME] = None
+    st.session_state[ROLE] = None
+    st.session_state[PRINTER_ID] = None
+    st.session_state[AUTH_TOKEN] = None
+
+
+def _set_authenticated_user(user, token: str) -> None:
+
+    st.session_state[AUTHENTICATED] = True
+    st.session_state[USER_ID] = user.id
+    st.session_state[USERNAME] = user.username
+    st.session_state[FULL_NAME] = user.full_name
+    st.session_state[ROLE] = user.role
+    st.session_state[PRINTER_ID] = user.printer_id
+    st.session_state[AUTH_TOKEN] = token
 
 
 # =========================================================
@@ -24,7 +64,8 @@ PRINTER_ID = "printer_id"
 
 def initialize_auth_session() -> None:
     """
-    Initialize authentication-related Streamlit session state.
+    Initialize authentication state and restore a persistent
+    login session from the browser cookie when necessary.
     """
 
     if AUTHENTICATED not in st.session_state:
@@ -44,6 +85,47 @@ def initialize_auth_session() -> None:
 
     if PRINTER_ID not in st.session_state:
         st.session_state[PRINTER_ID] = None
+
+    if AUTH_TOKEN not in st.session_state:
+        st.session_state[AUTH_TOKEN] = None
+
+    # Already authenticated in this Streamlit session.
+    if is_authenticated():
+        return
+
+    controller = _cookie_controller()
+
+    token = controller.get(COOKIE_NAME)
+
+    if not token:
+        return
+
+    db = SessionLocal()
+
+    try:
+
+        user = UserSessionService.get_user(
+            db=db,
+            token=token,
+        )
+
+        if user is None:
+
+            try:
+                controller.remove(COOKIE_NAME)
+            except Exception:
+                pass
+
+            _clear_session_state()
+            return
+
+        _set_authenticated_user(
+            user=user,
+            token=token,
+        )
+
+    finally:
+        db.close()
 
 
 # =========================================================
@@ -70,21 +152,26 @@ def login(
 
         user = result.data
 
-        # -------------------------------------------------
-        # Store identity only
-        # -------------------------------------------------
+        token = UserSessionService.create(
+            db=db,
+            user=user,
+        )
 
-        st.session_state[AUTHENTICATED] = True
-        st.session_state[USER_ID] = user.id
-        st.session_state[USERNAME] = user.username
-        st.session_state[FULL_NAME] = user.full_name
-        st.session_state[ROLE] = user.role
-        st.session_state[PRINTER_ID] = user.printer_id
+        controller = _cookie_controller()
+
+        controller.set(
+            COOKIE_NAME,
+            token,
+        )
+
+        _set_authenticated_user(
+            user=user,
+            token=token,
+        )
 
         return True, result.message
 
     finally:
-
         db.close()
 
 
@@ -94,15 +181,31 @@ def login(
 
 def logout() -> None:
     """
-    Clear authentication state.
+    Invalidate the persistent server-side session,
+    remove the browser cookie and clear Streamlit state.
     """
 
-    st.session_state[AUTHENTICATED] = False
-    st.session_state[USER_ID] = None
-    st.session_state[USERNAME] = None
-    st.session_state[FULL_NAME] = None
-    st.session_state[ROLE] = None
-    st.session_state[PRINTER_ID] = None
+    token = st.session_state.get(AUTH_TOKEN)
+
+    db = SessionLocal()
+
+    try:
+
+        UserSessionService.invalidate(
+            db=db,
+            token=token,
+        )
+
+    finally:
+        db.close()
+
+    try:
+        controller = _cookie_controller()
+        controller.remove(COOKIE_NAME)
+    except Exception:
+        pass
+
+    _clear_session_state()
 
 
 # =========================================================

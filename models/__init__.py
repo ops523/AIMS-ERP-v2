@@ -39,3 +39,5 @@ from .production_allocation import ProductionAllocation
 from .document_sequence import DocumentSequence
 
 from .media_roll_history import MediaRollHistory
+
+from .user_session import UserSession
