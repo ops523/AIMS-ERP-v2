@@ -41,18 +41,14 @@ def _get_session_cookie() -> str | None:
     """
     Safely retrieve the persistent authentication cookie.
 
-    streamlit-cookies-controller loads browser cookies through
-    a Streamlit component. The cookie cache may not be populated
-    during the first script execution, so refresh the controller
-    before reading the cookie.
+    The CookieController constructor loads the browser cookie cache.
+    Do not call controller.refresh() here because refresh creates
+    another Streamlit component instance using the same component key.
     """
 
     try:
 
         controller = _cookie_controller()
-
-        # Refresh the browser cookie cache.
-        controller.refresh()
 
         token = controller.get(COOKIE_NAME)
 
@@ -65,8 +61,8 @@ def _get_session_cookie() -> str | None:
 
     except (TypeError, AttributeError, RuntimeError):
 
-        # The component may not yet be initialized on the first
-        # Streamlit execution. Do not crash the application.
+        # The cookie component may not yet be initialized during
+        # the first Streamlit execution. Do not crash the app.
         st.session_state[COOKIE_READY] = False
 
         return None
