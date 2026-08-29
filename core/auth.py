@@ -21,6 +21,9 @@ AUTH_TOKEN = "auth_token"
 
 COOKIE_NAME = "aims_erp_session"
 
+COOKIE_CONTROLLER_KEY = "aims_erp_cookie_controller"
+COOKIE_READY = "aims_erp_cookie_ready"
+
 
 # =========================================================
 # COOKIE CONTROLLER
@@ -29,34 +32,42 @@ COOKIE_NAME = "aims_erp_session"
 def _cookie_controller():
     from streamlit_cookies_controller import CookieController
 
-    return CookieController()
+    return CookieController(
+        key=COOKIE_CONTROLLER_KEY,
+    )
 
 
 def _get_session_cookie() -> str | None:
     """
-    Safely read the persistent authentication cookie.
+    Safely retrieve the persistent authentication cookie.
 
-    The cookie controller is client-side and may not have
-    received browser cookies during the first script execution.
+    streamlit-cookies-controller loads browser cookies through
+    a Streamlit component. The cookie cache may not be populated
+    during the first script execution, so refresh the controller
+    before reading the cookie.
     """
 
     try:
 
         controller = _cookie_controller()
 
+        # Refresh the browser cookie cache.
+        controller.refresh()
+
         token = controller.get(COOKIE_NAME)
 
-        if token:
-            st.session_state["_cookie_ready"] = True
-            return token
+        st.session_state[COOKIE_READY] = True
 
-        # The controller may legitimately have no cookie.
-        # Mark it ready after a successful read.
-        st.session_state["_cookie_ready"] = True
+        if token:
+            return str(token)
 
         return None
 
-    except (TypeError, AttributeError):
+    except (TypeError, AttributeError, RuntimeError):
+
+        # The component may not yet be initialized on the first
+        # Streamlit execution. Do not crash the application.
+        st.session_state[COOKIE_READY] = False
 
         return None
 
@@ -64,6 +75,25 @@ def _get_session_cookie() -> str | None:
 # =========================================================
 # SESSION HELPERS
 # =========================================================
+
+def _initialize_session_state() -> None:
+
+    defaults = {
+        AUTHENTICATED: False,
+        USER_ID: None,
+        USERNAME: None,
+        FULL_NAME: None,
+        ROLE: None,
+        PRINTER_ID: None,
+        AUTH_TOKEN: None,
+        COOKIE_READY: False,
+    }
+
+    for key, value in defaults.items():
+
+        if key not in st.session_state:
+            st.session_state[key] = value
+
 
 def _clear_session_state() -> None:
 
@@ -97,30 +127,18 @@ def initialize_auth_session() -> None:
     login session from the browser cookie when necessary.
     """
 
-    if AUTHENTICATED not in st.session_state:
-        st.session_state[AUTHENTICATED] = False
+    _initialize_session_state()
 
-    if USER_ID not in st.session_state:
-        st.session_state[USER_ID] = None
-
-    if USERNAME not in st.session_state:
-        st.session_state[USERNAME] = None
-
-    if FULL_NAME not in st.session_state:
-        st.session_state[FULL_NAME] = None
-
-    if ROLE not in st.session_state:
-        st.session_state[ROLE] = None
-
-    if PRINTER_ID not in st.session_state:
-        st.session_state[PRINTER_ID] = None
-
-    if AUTH_TOKEN not in st.session_state:
-        st.session_state[AUTH_TOKEN] = None
-
+    # -----------------------------------------------------
     # Already authenticated in this Streamlit session.
+    # -----------------------------------------------------
+
     if is_authenticated():
         return
+
+    # -----------------------------------------------------
+    # Try to restore persistent browser session.
+    # -----------------------------------------------------
 
     token = _get_session_cookie()
 
@@ -138,12 +156,16 @@ def initialize_auth_session() -> None:
 
         if user is None:
 
+            # Invalid/expired server-side session.
+            # Remove the browser cookie as well.
             try:
+                controller = _cookie_controller()
                 controller.remove(COOKIE_NAME)
             except Exception:
                 pass
 
             _clear_session_state()
+
             return
 
         _set_authenticated_user(
@@ -152,6 +174,7 @@ def initialize_auth_session() -> None:
         )
 
     finally:
+
         db.close()
 
 
@@ -186,9 +209,14 @@ def login(
 
         controller = _cookie_controller()
 
+        # Explicitly make the authentication cookie persistent.
         controller.set(
             COOKIE_NAME,
             token,
+            path="/",
+            max_age=7 * 24 * 60 * 60,
+            same_site="lax",
+            secure=True,
         )
 
         _set_authenticated_user(
@@ -199,6 +227,7 @@ def login(
         return True, result.message
 
     finally:
+
         db.close()
 
 
@@ -224,11 +253,20 @@ def logout() -> None:
         )
 
     finally:
+
         db.close()
 
     try:
+
         controller = _cookie_controller()
-        controller.remove(COOKIE_NAME)
+
+        controller.remove(
+            COOKIE_NAME,
+            path="/",
+            same_site="lax",
+            secure=True,
+        )
+
     except Exception:
         pass
 
