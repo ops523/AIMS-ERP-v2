@@ -140,27 +140,26 @@ def _get_session_cookie() -> str | None:
     ):
         return None
 
-
 def _set_session_cookie(
     token: str,
 ) -> None:
     """
     Persist the server-side authentication token in the browser.
-
-    The cookie is:
-
-    - available to the entire application path
-    - HTTPS-only
-    - SameSite=Lax
-    - valid for 7 days
     """
 
     if not token:
+        st.error("DEBUG: _set_session_cookie received empty token.")
         return
 
     try:
+        from streamlit_cookies_controller import CookieController
 
-        controller = _cookie_controller()
+        controller = CookieController(
+            key=COOKIE_CONTROLLER_KEY,
+        )
+
+        st.text("DEBUG: CookieController created")
+        st.text(f"DEBUG: Token length = {len(str(token))}")
 
         controller.set(
             COOKIE_NAME,
@@ -171,13 +170,23 @@ def _set_session_cookie(
             same_site="lax",
         )
 
-    except (
-        TypeError,
-        AttributeError,
-        RuntimeError,
-    ):
-        pass
+        st.success(
+            f"DEBUG: Cookie set requested: {COOKIE_NAME}"
+        )
 
+        cookies = controller.getAll()
+
+        st.text(
+            f"DEBUG: Controller contains session cookie = "
+            f"{COOKIE_NAME in cookies}"
+        )
+
+    except Exception as e:
+        st.error(
+            f"DEBUG: Cookie creation failed: "
+            f"{type(e).__name__}: {e}"
+        )
+        raise
 
 def _remove_session_cookie() -> None:
     """
