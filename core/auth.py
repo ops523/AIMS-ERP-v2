@@ -27,22 +27,30 @@ COOKIE_CONTROLLER_KEY = "aims_erp_cookie_controller"
 # COOKIE CONTROLLER
 # =========================================================
 
+_cookie_controller_instance = None
+
+
 def _cookie_controller():
     """
-    Return the single CookieController instance used by the
-    authentication system.
+    Return the single CookieController instance used by
+    the authentication system.
 
-    The controller is tied to a stable Streamlit session-state
-    key. This is important because creating multiple controller
-    instances with different keys can create multiple Streamlit
-    component instances and interfere with cookie lifecycle.
+    The controller must only be instantiated once per Python
+    process because CookieController registers a Streamlit
+    component using COOKIE_CONTROLLER_KEY.
     """
 
-    from streamlit_cookies_controller import CookieController
+    global _cookie_controller_instance
 
-    return CookieController(
-        key=COOKIE_CONTROLLER_KEY,
-    )
+    if _cookie_controller_instance is None:
+
+        from streamlit_cookies_controller import CookieController
+
+        _cookie_controller_instance = CookieController(
+            key=COOKIE_CONTROLLER_KEY,
+        )
+
+    return _cookie_controller_instance
 
 
 # =========================================================
