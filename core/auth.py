@@ -233,17 +233,6 @@ def initialize_auth_session() -> None:
 
     token = _get_session_cookie()
 
-    st.write(
-    "AUTH COOKIE DEBUG:",
-    {
-        "token_found": bool(token),
-        "controller_state_exists": COOKIE_CONTROLLER_KEY in st.session_state,
-        "controller_state": st.session_state.get(
-            COOKIE_CONTROLLER_KEY
-        ),
-    }
-)
-
     if not token:
         return
 
