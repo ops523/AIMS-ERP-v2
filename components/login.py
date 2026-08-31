@@ -51,6 +51,7 @@ def render_login() -> None:
             if success:
 
                 st.success(message)
+                st.rerun()
                 
             else:
 
