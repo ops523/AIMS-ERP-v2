@@ -107,24 +107,17 @@ def _set_authenticated_user(
 # =========================================================
 
 def _get_session_cookie() -> str | None:
-    """
-    Read the persistent authentication cookie using the same
-    CookieController instance/key used for writing the cookie.
-
-    We intentionally do not call controller.refresh() here.
-
-    CookieController maintains its browser-cookie cache in
-    Streamlit session state. Calling refresh() during every
-    authentication initialization can create another component
-    instance and cause StreamlitDuplicateElementKey errors.
-    """
-
     try:
-
         controller = _cookie_controller()
 
-        token = controller.get(
-            COOKIE_NAME,
+        st.write("DEBUG: Before refresh")
+        controller.refresh()
+        st.write("DEBUG: After refresh")
+
+        token = controller.get(COOKIE_NAME)
+
+        st.write(
+            f"DEBUG: Session cookie found = {bool(token)}"
         )
 
         if not token:
@@ -132,13 +125,12 @@ def _get_session_cookie() -> str | None:
 
         return str(token)
 
-    except (
-        TypeError,
-        AttributeError,
-        RuntimeError,
-        KeyError,
-    ):
-        return None
+    except Exception as e:
+        st.error(
+            f"DEBUG: Cookie read failed: "
+            f"{type(e).__name__}: {e}"
+        )
+        raise
 
 def _set_session_cookie(
     token: str,
