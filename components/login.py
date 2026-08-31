@@ -51,9 +51,7 @@ def render_login() -> None:
             if success:
 
                 st.success(message)
-
-                st.info("Login successful. Please wait 3 seconds, then check the browser cookies.")
-
+                
             else:
 
                 st.error(message)
