@@ -20,6 +20,29 @@ PRINTER_ID = "printer_id"
 AUTH_TOKEN = "auth_token"
 
 COOKIE_NAME = "aims_erp_session"
+COOKIE_CONTROLLER_KEY = "aims_erp_cookie_controller"
+
+
+# =========================================================
+# COOKIE CONTROLLER
+# =========================================================
+
+def _cookie_controller():
+    """
+    Return the single CookieController instance used by the
+    authentication system.
+
+    The controller is tied to a stable Streamlit session-state
+    key. This is important because creating multiple controller
+    instances with different keys can create multiple Streamlit
+    component instances and interfere with cookie lifecycle.
+    """
+
+    from streamlit_cookies_controller import CookieController
+
+    return CookieController(
+        key=COOKIE_CONTROLLER_KEY,
+    )
 
 
 # =========================================================
@@ -85,23 +108,24 @@ def _set_authenticated_user(
 
 def _get_session_cookie() -> str | None:
     """
-    Read the persistent authentication cookie directly from
-    Streamlit's native browser cookie interface.
+    Read the persistent authentication cookie using the same
+    CookieController instance/key used for writing the cookie.
 
-    Streamlit 1.62 exposes browser cookies through
-    st.context.cookies. This avoids the additional
-    streamlit-cookies-controller component and prevents
-    duplicate component initialization during navigation.
+    We intentionally do not call controller.refresh() here.
+
+    CookieController maintains its browser-cookie cache in
+    Streamlit session state. Calling refresh() during every
+    authentication initialization can create another component
+    instance and cause StreamlitDuplicateElementKey errors.
     """
 
     try:
 
-        cookies = st.context.cookies
+        controller = _cookie_controller()
 
-        if cookies is None:
-            return None
-
-        token = cookies.get(COOKIE_NAME)
+        token = controller.get(
+            COOKIE_NAME,
+        )
 
         if not token:
             return None
@@ -109,39 +133,41 @@ def _get_session_cookie() -> str | None:
         return str(token)
 
     except (
-        AttributeError,
-        KeyError,
         TypeError,
+        AttributeError,
+        RuntimeError,
+        KeyError,
     ):
         return None
 
 
-def _set_session_cookie(token: str) -> None:
+def _set_session_cookie(
+    token: str,
+) -> None:
     """
-    Set the authentication cookie.
+    Persist the server-side authentication token in the browser.
 
-    NOTE:
-    Streamlit's native st.context.cookies interface is
-    read-only. Cookie creation therefore remains a browser-side
-    operation.
+    The cookie is:
 
-    The application currently uses streamlit-cookies-controller
-    only for writing/removing the cookie.
+    - available to the entire application path
+    - HTTPS-only
+    - SameSite=Lax
+    - valid for 7 days
     """
+
+    if not token:
+        return
 
     try:
 
-        from streamlit_cookies_controller import CookieController
-
-        controller = CookieController(
-            key="aims_erp_cookie_writer",
-        )
+        controller = _cookie_controller()
 
         controller.set(
             COOKIE_NAME,
             token,
             path="/",
             max_age=7 * 24 * 60 * 60,
+            secure=True,
             same_site="lax",
         )
 
@@ -160,15 +186,12 @@ def _remove_session_cookie() -> None:
 
     try:
 
-        from streamlit_cookies_controller import CookieController
-
-        controller = CookieController(
-            key="aims_erp_cookie_writer",
-        )
+        controller = _cookie_controller()
 
         controller.remove(
             COOKIE_NAME,
             path="/",
+            secure=True,
             same_site="lax",
         )
 
@@ -176,6 +199,7 @@ def _remove_session_cookie() -> None:
         TypeError,
         AttributeError,
         RuntimeError,
+        KeyError,
     ):
         pass
 
@@ -266,7 +290,15 @@ def login(
             user=user,
         )
 
+        # -------------------------------------------------
+        # Persist token in browser.
+        # -------------------------------------------------
+
         _set_session_cookie(token)
+
+        # -------------------------------------------------
+        # Authenticate current Streamlit session immediately.
+        # -------------------------------------------------
 
         _set_authenticated_user(
             user=user,
@@ -289,21 +321,33 @@ def logout() -> None:
     browser cookie and clear Streamlit session state.
     """
 
-    token = st.session_state.get(AUTH_TOKEN)
+    token = st.session_state.get(
+        AUTH_TOKEN,
+    )
 
     db = SessionLocal()
 
     try:
 
-        UserSessionService.invalidate(
-            db=db,
-            token=token,
-        )
+        if token:
+
+            UserSessionService.invalidate(
+                db=db,
+                token=token,
+            )
 
     finally:
         db.close()
 
+    # -----------------------------------------------------
+    # Remove browser persistence.
+    # -----------------------------------------------------
+
     _remove_session_cookie()
+
+    # -----------------------------------------------------
+    # Clear current Streamlit session.
+    # -----------------------------------------------------
 
     _clear_session_state()
 
