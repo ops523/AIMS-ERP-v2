@@ -115,17 +115,22 @@ def _set_authenticated_user(
 # =========================================================
 
 def _get_session_cookie() -> str | None:
+    """
+    Read the persistent authentication cookie from the
+    CookieController cache.
+
+    The controller is instantiated only once per process.
+    Do not call controller.refresh() here because refresh()
+    creates another Streamlit component instance using the
+    same key.
+    """
+
     try:
+
         controller = _cookie_controller()
 
-        st.write("DEBUG: Before refresh")
-        controller.refresh()
-        st.write("DEBUG: After refresh")
-
-        token = controller.get(COOKIE_NAME)
-
-        st.write(
-            f"DEBUG: Session cookie found = {bool(token)}"
+        token = controller.get(
+            COOKIE_NAME,
         )
 
         if not token:
@@ -133,12 +138,13 @@ def _get_session_cookie() -> str | None:
 
         return str(token)
 
-    except Exception as e:
-        st.error(
-            f"DEBUG: Cookie read failed: "
-            f"{type(e).__name__}: {e}"
-        )
-        raise
+    except (
+        TypeError,
+        AttributeError,
+        RuntimeError,
+        KeyError,
+    ):
+        return None
 
 def _set_session_cookie(
     token: str,
@@ -226,6 +232,17 @@ def initialize_auth_session() -> None:
     # -----------------------------------------------------
 
     token = _get_session_cookie()
+
+    st.write(
+    "AUTH COOKIE DEBUG:",
+    {
+        "token_found": bool(token),
+        "controller_state_exists": COOKIE_CONTROLLER_KEY in st.session_state,
+        "controller_state": st.session_state.get(
+            COOKIE_CONTROLLER_KEY
+        ),
+    }
+)
 
     if not token:
         return
