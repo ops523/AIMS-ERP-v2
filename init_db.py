@@ -1,30 +1,25 @@
-from database import Base
-from database import engine
 from database import SessionLocal
 
-import models
-
 from services.seed_service import seed_database
-
 from core.storage_manager import StorageManager
 
 
 def initialize_database():
+    """
+    Initialize application runtime dependencies.
+
+    Database schema management is handled by Alembic.
+    This function is responsible only for storage initialization
+    and master-data seeding.
+    """
 
     # Create storage folders
-
     StorageManager.initialize()
 
-    # Create database tables
-
-    Base.metadata.create_all(bind=engine)
-
+    # Seed master / initial application data
     db = SessionLocal()
 
     try:
-
         seed_database(db)
-
     finally:
-
         db.close()

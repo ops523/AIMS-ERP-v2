@@ -31,6 +31,13 @@ NAVIGATION_ITEMS: tuple[NavigationItem, ...] = (
     ),
 
     NavigationItem(
+    label="User Management",
+    page="pages/user_management.py",
+    icon="👥",
+    permission="users.view",
+    ),
+
+    NavigationItem(
         label="Inventory Ledger",
         page="pages/inventory_ledger.py",
         icon="📚",

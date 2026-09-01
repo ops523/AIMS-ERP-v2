@@ -63,15 +63,6 @@ class CampaignService:
             db.add_all(locations)
 
             # ---------------------------------------
-            # Commit Once
-            # ---------------------------------------
-
-            db.commit()
-
-            db.refresh(campaign)
-            db.refresh(version)
-
-            # ---------------------------------------
             # Activity Log
             # ---------------------------------------
 
@@ -82,6 +73,15 @@ class CampaignService:
                 activity="Campaign Created",
                 performed_by="Admin",
             )
+
+            # ---------------------------------------
+            # Commit Once
+            # ---------------------------------------
+
+            db.commit()
+
+            db.refresh(campaign)
+            db.refresh(version)
 
             return campaign, version
 

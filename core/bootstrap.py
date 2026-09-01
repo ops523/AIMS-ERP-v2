@@ -1,5 +1,6 @@
 from init_db import initialize_database
 
+
 _initialized = False
 
 

@@ -16,13 +16,9 @@ class ProductionItemService:
     ):
 
         item = ProductionItem(
-
             production_batch_id=production_batch_id,
-
-            artwork_id=artwork_id,
-
+            campaign_artwork_id=artwork_id,
             planned_sqft=planned_sqft,
-
         )
 
         return ProductionItemRepository.create(

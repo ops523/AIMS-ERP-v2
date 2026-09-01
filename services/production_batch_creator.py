@@ -21,6 +21,10 @@ from services.activity_log_service import (
     ActivityLogService,
 )
 
+from services.document_number_service import (
+    DocumentNumberService,
+)
+
 
 class ProductionBatchCreator:
 
@@ -86,7 +90,10 @@ class ProductionBatchCreator:
             # --------------------------------------------------
 
             batch = ProductionBatch(
-                batch_number=None,
+                batch_number=DocumentNumberService.generate(
+                    db,
+                    "PRODUCTION_BATCH",
+                ),
                 printer_id=printer.id,
                 status="PLANNED",
                 remarks=remarks,
