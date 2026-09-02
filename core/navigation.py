@@ -15,6 +15,7 @@ class NavigationItem:
     page: str
     icon: str
     permission: str
+    section: str
 
 
 # =========================================================
@@ -23,25 +24,28 @@ class NavigationItem:
 
 NAVIGATION_ITEMS: tuple[NavigationItem, ...] = (
 
+    # -----------------------------------------------------
+    # CAMPAIGN
+    # -----------------------------------------------------
+
     NavigationItem(
         label="Campaign Import Wizard",
         page="pages/campaign_wizard.py",
         icon="📦",
         permission="campaigns.view",
+        section="CAMPAIGN",
     ),
 
-    NavigationItem(
-    label="User Management",
-    page="pages/user_management.py",
-    icon="👥",
-    permission="users.view",
-    ),
+    # -----------------------------------------------------
+    # INVENTORY
+    # -----------------------------------------------------
 
     NavigationItem(
-        label="Inventory Ledger",
-        page="pages/inventory_ledger.py",
-        icon="📚",
-        permission="inventory.view",
+        label="Receive Media Rolls",
+        page="pages/receive_roll.py",
+        icon="📥",
+        permission="media_rolls.manage",
+        section="INVENTORY",
     ),
 
     NavigationItem(
@@ -49,13 +53,27 @@ NAVIGATION_ITEMS: tuple[NavigationItem, ...] = (
         page="pages/media_roll_inventory.py",
         icon="📦",
         permission="media_rolls.view",
+        section="INVENTORY",
     ),
+
+    NavigationItem(
+        label="Inventory Ledger",
+        page="pages/inventory_ledger.py",
+        icon="📚",
+        permission="inventory.view",
+        section="INVENTORY",
+    ),
+
+    # -----------------------------------------------------
+    # PRODUCTION
+    # -----------------------------------------------------
 
     NavigationItem(
         label="Production Batch Wizard",
         page="pages/production_batch_wizard.py",
         icon="🧾",
         permission="production.manage",
+        section="PRODUCTION",
     ),
 
     NavigationItem(
@@ -63,27 +81,19 @@ NAVIGATION_ITEMS: tuple[NavigationItem, ...] = (
         page="pages/production_workspace.py",
         icon="🖨️",
         permission="production.view",
+        section="PRODUCTION",
     ),
 
-    NavigationItem(
-        label="Receive Media Rolls",
-        page="pages/receive_roll.py",
-        icon="📥",
-        permission="media_rolls.manage",
-    ),
+    # -----------------------------------------------------
+    # ADMIN
+    # -----------------------------------------------------
 
     NavigationItem(
-        label="Roll Details",
-        page="pages/roll_details.py",
-        icon="🔎",
-        permission="media_rolls.view",
-    ),
-
-    NavigationItem(
-        label="Roll Inventory",
-        page="pages/roll_inventory.py",
-        icon="📊",
-        permission="inventory.view",
+        label="User Management",
+        page="pages/user_management.py",
+        icon="👥",
+        permission="users.view",
+        section="ADMIN",
     ),
 )
 
@@ -97,6 +107,8 @@ def get_navigation_for_role(
 ) -> list[NavigationItem]:
     """
     Return navigation items accessible to the supplied role.
+
+    Items retain the defined section and ordering.
     """
 
     if not role:
@@ -110,3 +122,35 @@ def get_navigation_for_role(
             item.permission,
         )
     ]
+
+
+# =========================================================
+# GROUPED NAVIGATION
+# =========================================================
+
+def get_navigation_sections(
+    role: str | None,
+) -> dict[str, list[NavigationItem]]:
+    """
+    Return authorized navigation items grouped by section.
+
+    Section order is:
+
+        CAMPAIGN
+        INVENTORY
+        PRODUCTION
+        ADMIN
+    """
+
+    authorized_items = get_navigation_for_role(role)
+
+    sections: dict[str, list[NavigationItem]] = {}
+
+    for item in authorized_items:
+
+        if item.section not in sections:
+            sections[item.section] = []
+
+        sections[item.section].append(item)
+
+    return sections

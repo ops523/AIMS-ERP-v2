@@ -24,11 +24,12 @@ def test_admin_gets_all_current_navigation_items():
     assert "Campaign Import Wizard" in labels
     assert "Media Roll Inventory" in labels
     assert "Receive Media Rolls" in labels
-    assert "Roll Inventory" in labels
     assert "Inventory Ledger" in labels
-    assert "Roll Details" in labels
-    assert "Production" in labels
     assert "Production Batch Wizard" in labels
+    assert "Production" in labels
+    assert "User Management" in labels
+
+    assert "Roll Inventory" not in labels
 
 
 def test_operations_can_access_campaigns_and_production():
@@ -63,8 +64,9 @@ def test_warehouse_can_access_inventory():
 
     assert "Media Roll Inventory" in labels
     assert "Receive Media Rolls" in labels
-    assert "Roll Inventory" in labels
     assert "Inventory Ledger" in labels
+
+    assert "Roll Inventory" not in labels
 
 
 def test_unknown_role_gets_no_navigation():
