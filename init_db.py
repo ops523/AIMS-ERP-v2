@@ -7,6 +7,7 @@ from alembic.config import Config
 
 from database import SessionLocal
 from services.seed_service import seed_database
+from services.database_health_service import DatabaseHealthService
 from core.storage_manager import StorageManager
 
 
@@ -50,6 +51,11 @@ def initialize_database():
     StorageManager.initialize()
 
     run_migrations()
+
+    if not DatabaseHealthService.check_connection():
+        raise RuntimeError(
+            "Database health check failed after migrations."
+        )
 
     db = SessionLocal()
 
