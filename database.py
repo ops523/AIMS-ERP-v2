@@ -13,9 +13,23 @@ if DATABASE_URL.startswith("sqlite"):
     }
 
 
+engine_kwargs = {
+    "connect_args": connect_args,
+}
+
+
+if DATABASE_URL.startswith("postgresql"):
+    engine_kwargs.update(
+        {
+            "pool_pre_ping": True,
+            "pool_recycle": 1800,
+        }
+    )
+
+
 engine = create_engine(
     DATABASE_URL,
-    connect_args=connect_args,
+    **engine_kwargs,
 )
 
 
