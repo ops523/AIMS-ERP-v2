@@ -5,6 +5,10 @@ from config import DATABASE_URL
 from models.base import Base
 
 
+# ============================================================
+# ENGINE CONFIGURATION
+# ============================================================
+
 connect_args = {}
 
 if DATABASE_URL.startswith("sqlite"):
@@ -18,7 +22,8 @@ engine_kwargs = {
 }
 
 
-if DATABASE_URL.startswith("postgresql"):
+# PostgreSQL production configuration
+if DATABASE_URL.startswith("postgresql+psycopg"):
     engine_kwargs.update(
         {
             "pool_pre_ping": True,
@@ -27,11 +32,19 @@ if DATABASE_URL.startswith("postgresql"):
     )
 
 
+# ============================================================
+# DATABASE ENGINE
+# ============================================================
+
 engine = create_engine(
     DATABASE_URL,
     **engine_kwargs,
 )
 
+
+# ============================================================
+# SESSION FACTORY
+# ============================================================
 
 SessionLocal = sessionmaker(
     bind=engine,
@@ -41,4 +54,7 @@ SessionLocal = sessionmaker(
 
 
 def get_session():
+    """
+    Return a new SQLAlchemy database session.
+    """
     return SessionLocal()
