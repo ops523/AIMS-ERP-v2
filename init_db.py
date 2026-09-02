@@ -47,28 +47,13 @@ def initialize_database():
     Schema management is handled exclusively by Alembic.
     """
 
-    # -----------------------------------------------------
-    # Storage
-    # -----------------------------------------------------
-
     StorageManager.initialize()
 
-    # -----------------------------------------------------
-    # Database schema
-    # -----------------------------------------------------
-
     run_migrations()
-
-    # -----------------------------------------------------
-    # Master / initial application data
-    # -----------------------------------------------------
 
     db = SessionLocal()
 
     try:
-
         seed_database(db)
-
     finally:
-
         db.close()
