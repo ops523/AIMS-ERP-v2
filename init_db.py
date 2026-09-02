@@ -50,6 +50,8 @@ def initialize_database():
 
     StorageManager.initialize()
 
+    DatabaseHealthService.validate_configuration()
+
     run_migrations()
 
     if not DatabaseHealthService.check_connection():
