@@ -1,11 +1,11 @@
 from sqlalchemy import text
 
 from config import (
+    APP_ENV,
     DATABASE_IS_POSTGRES,
     DATABASE_IS_SQLITE,
     DATABASE_URL,
 )
-from database import get_session
 
 
 class DatabaseHealthService:
@@ -15,6 +15,8 @@ class DatabaseHealthService:
         """
         Verify that the configured database is reachable.
         """
+
+        from database import get_session
 
         db = get_session()
 
@@ -52,8 +54,19 @@ class DatabaseHealthService:
         """
 
         if not DATABASE_URL:
+            if APP_ENV == "production":
+                raise RuntimeError(
+                    "DATABASE_URL is required in production."
+                )
+
             raise RuntimeError(
                 "DATABASE_URL is not configured."
+            )
+
+        if APP_ENV == "production" and not DATABASE_IS_POSTGRES:
+            raise RuntimeError(
+                "Production environment requires "
+                "a PostgreSQL DATABASE_URL."
             )
 
         if DATABASE_IS_POSTGRES:

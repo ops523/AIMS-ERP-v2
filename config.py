@@ -13,11 +13,34 @@ DATABASE_DIR.mkdir(exist_ok=True)
 # DATABASE CONFIGURATION
 # ============================================================
 
+APP_ENV = os.getenv(
+    "APP_ENV",
+    "development",
+).strip().lower()
+
+if APP_ENV not in {
+    "development",
+    "production",
+    "test",
+}:
+    raise RuntimeError(
+        "Unsupported APP_ENV. "
+        "Use development, production, or test."
+    )
+
+
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 # Local development / testing fallback
-if not DATABASE_URL:
+#
+# SQLite fallback is intentionally allowed only outside
+# production. Production must provide an explicit
+# PostgreSQL DATABASE_URL.
+if not DATABASE_URL and APP_ENV != "production":
     DATABASE_URL = f"sqlite:///{DATABASE_DIR / 'aims.db'}"
+
+if DATABASE_URL is None:
+    DATABASE_URL = ""
 
 
 # Normalize PostgreSQL URLs commonly provided by hosting platforms.

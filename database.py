@@ -36,6 +36,12 @@ if DATABASE_URL.startswith("postgresql+psycopg"):
 # DATABASE ENGINE
 # ============================================================
 
+if not DATABASE_URL:
+    raise RuntimeError(
+        "DATABASE_URL is required before creating "
+        "the database engine."
+    )
+
 engine = create_engine(
     DATABASE_URL,
     **engine_kwargs,
