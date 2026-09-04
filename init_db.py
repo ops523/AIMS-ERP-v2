@@ -5,7 +5,6 @@ from pathlib import Path
 from alembic import command
 from alembic.config import Config
 
-from database import SessionLocal
 from services.seed_service import seed_database
 from services.database_health_service import DatabaseHealthService
 from core.storage_manager import StorageManager
@@ -41,7 +40,11 @@ def initialize_database():
 
         Storage
             ↓
+        Configuration validation
+            ↓
         Database migrations
+            ↓
+        Database health check
             ↓
         Master-data seeding
 
@@ -50,6 +53,10 @@ def initialize_database():
 
     StorageManager.initialize()
 
+    # Validate configuration before importing database.py.
+    #
+    # This is important in production because database.py
+    # creates the SQLAlchemy engine at import time.
     DatabaseHealthService.validate_configuration()
 
     run_migrations()
@@ -58,6 +65,10 @@ def initialize_database():
         raise RuntimeError(
             "Database health check failed after migrations."
         )
+
+    # Import only after configuration validation and
+    # successful database initialization.
+    from database import SessionLocal
 
     db = SessionLocal()
 

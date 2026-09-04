@@ -87,17 +87,17 @@ DATABASE_IS_SQLITE = DATABASE_URL.startswith(
 SECRET_KEY = os.getenv(
     "SECRET_KEY",
     "dev-secret-key",
-)
+).strip()
 
 APP_NAME = os.getenv(
     "APP_NAME",
     "AIMS ERP",
-)
+).strip()
 
 COMPANY = os.getenv(
     "COMPANY",
     "ADWALLZ",
-)
+).strip()
 
 VERSION = os.getenv(
     "APP_VERSION",

@@ -47,11 +47,15 @@ class DatabaseHealthService:
     @staticmethod
     def validate_configuration() -> None:
         """
-        Validate the configured database before application startup.
+        Validate the configured database and production
+        application configuration before startup.
 
         Raises:
-            RuntimeError: If the database configuration is unsupported.
+            RuntimeError: If the production configuration
+            is invalid or unsupported.
         """
+
+        from config import SECRET_KEY
 
         if not DATABASE_URL:
             if APP_ENV == "production":
@@ -63,11 +67,24 @@ class DatabaseHealthService:
                 "DATABASE_URL is not configured."
             )
 
-        if APP_ENV == "production" and not DATABASE_IS_POSTGRES:
-            raise RuntimeError(
-                "Production environment requires "
-                "a PostgreSQL DATABASE_URL."
-            )
+        if APP_ENV == "production":
+
+            if not DATABASE_IS_POSTGRES:
+                raise RuntimeError(
+                    "Production environment requires "
+                    "a PostgreSQL DATABASE_URL."
+                )
+
+            if not SECRET_KEY:
+                raise RuntimeError(
+                    "SECRET_KEY is required in production."
+                )
+
+            if SECRET_KEY == "dev-secret-key":
+                raise RuntimeError(
+                    "Production SECRET_KEY must not use "
+                    "the default development secret."
+                )
 
         if DATABASE_IS_POSTGRES:
             return
