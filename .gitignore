@@ -7,3 +7,4 @@ reports/
 qr/
 .vscode/
 .idea/
+.streamlit/secrets.toml
