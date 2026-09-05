@@ -5,10 +5,11 @@ from typing import Optional
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from models.media_roll import MediaRoll
-from repositories.base_repository import BaseRepository
-
 from constants.status import MediaRollStatus
+
+from models.media_roll import MediaRoll
+
+from repositories.base_repository import BaseRepository
 
 
 class MediaRollRepository(BaseRepository[MediaRoll]):
@@ -123,6 +124,42 @@ class MediaRollRepository(BaseRepository[MediaRoll]):
         return cls.by_status(
             db,
             MediaRollStatus.AVAILABLE,
+        )
+
+    @classmethod
+    def available_for_allocation(
+        cls,
+        db: Session,
+    ):
+        """
+        Return rolls that are physically usable for a new
+        production allocation.
+
+        AVAILABLE rolls are eligible.
+
+        PARTIALLY_USED rolls are also eligible when they still
+        contain physical balance.
+
+        RESERVED / ALLOCATED / PRINTING rolls are excluded because
+        they are already committed to production.
+        """
+
+        return (
+            db.query(MediaRoll)
+            .filter(
+                MediaRoll.is_active.is_(True),
+                MediaRoll.available_sqft > 0,
+                MediaRoll.status.in_(
+                    [
+                        MediaRollStatus.AVAILABLE,
+                        MediaRollStatus.PARTIALLY_USED,
+                    ]
+                ),
+            )
+            .order_by(
+                MediaRoll.created_at.asc()
+            )
+            .all()
         )
 
     # =========================================================
@@ -242,12 +279,24 @@ class MediaRollRepository(BaseRepository[MediaRoll]):
 
                 query = query.filter(
                     or_(
-                        MediaRoll.roll_number.ilike(pattern),
-                        MediaRoll.asset_id.ilike(pattern),
-                        MediaRoll.qr_payload.ilike(pattern),
-                        MediaRoll.manufacturer_roll_no.ilike(pattern),
-                        MediaRoll.purchase_order.ilike(pattern),
-                        MediaRoll.invoice_number.ilike(pattern),
+                        MediaRoll.roll_number.ilike(
+                            pattern
+                        ),
+                        MediaRoll.asset_id.ilike(
+                            pattern
+                        ),
+                        MediaRoll.qr_payload.ilike(
+                            pattern
+                        ),
+                        MediaRoll.manufacturer_roll_no.ilike(
+                            pattern
+                        ),
+                        MediaRoll.purchase_order.ilike(
+                            pattern
+                        ),
+                        MediaRoll.invoice_number.ilike(
+                            pattern
+                        ),
                     )
                 )
 
